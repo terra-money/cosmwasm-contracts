@@ -3,15 +3,68 @@
   "title": "QueryMsg",
   "anyOf": [
     {
+      "description": "Config returns the stored configuration state. Returns State",
       "type": "object",
       "required": [
-        "get_count"
+        "config"
       ],
       "properties": {
-        "get_count": {
+        "config": {
           "type": "object"
         }
       }
+    },
+    {
+      "description": "Exchange rate returns how many ASK we can get for 1 OFFER",
+      "type": "object",
+      "required": [
+        "exchange_rate"
+      ],
+      "properties": {
+        "exchange_rate": {
+          "type": "object"
+        }
+      }
+    },
+    {
+      "description": "Simulate will try to sell the given number of tokens (denom must be either ask or offer, we trade for the other)",
+      "type": "object",
+      "required": [
+        "simulate"
+      ],
+      "properties": {
+        "simulate": {
+          "type": "object",
+          "required": [
+            "offer"
+          ],
+          "properties": {
+            "offer": {
+              "$ref": "#/definitions/Coin"
+            }
+          }
+        }
+      }
     }
-  ]
+  ],
+  "definitions": {
+    "Coin": {
+      "type": "object",
+      "required": [
+        "amount",
+        "denom"
+      ],
+      "properties": {
+        "amount": {
+          "$ref": "#/definitions/Uint128"
+        },
+        "denom": {
+          "type": "string"
+        }
+      }
+    },
+    "Uint128": {
+      "type": "string"
+    }
+  }
 }

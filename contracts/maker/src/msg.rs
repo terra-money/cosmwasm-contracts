@@ -21,9 +21,11 @@ pub enum HandleMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    // Exchange rate returns how many ASK we can get for 1 OFFER
+    /// Config returns the stored configuration state. Returns State
+    Config {},
+    /// Exchange rate returns how many ASK we can get for 1 OFFER
     ExchangeRate {},
-    // Simulate will try to sell the given number of tokens (denom must be either ask or offer, we trade for the other)
+    /// Simulate will try to sell the given number of tokens (denom must be either ask or offer, we trade for the other)
     Simulate { offer: Coin },
 }
 

@@ -3,13 +3,16 @@
   "title": "State",
   "type": "object",
   "required": [
-    "count",
+    "ask",
+    "offer",
     "owner"
   ],
   "properties": {
-    "count": {
-      "type": "integer",
-      "format": "int32"
+    "ask": {
+      "type": "string"
+    },
+    "offer": {
+      "type": "string"
     },
     "owner": {
       "$ref": "#/definitions/CanonicalAddr"

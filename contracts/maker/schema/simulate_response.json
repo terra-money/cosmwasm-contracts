@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SimulateResponse",
+  "description": "Returns how many coins we could BUY if we SELL the given amount",
+  "type": "object",
+  "required": [
+    "buy",
+    "sell"
+  ],
+  "properties": {
+    "buy": {
+      "$ref": "#/definitions/Coin"
+    },
+    "sell": {
+      "$ref": "#/definitions/Coin"
+    }
+  },
+  "definitions": {
+    "Coin": {
+      "type": "object",
+      "required": [
+        "amount",
+        "denom"
+      ],
+      "properties": {
+        "amount": {
+          "$ref": "#/definitions/Uint128"
+        },
+        "denom": {
+          "type": "string"
+        }
+      }
+    },
+    "Uint128": {
+      "type": "string"
+    }
+  }
+}

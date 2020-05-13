@@ -3,35 +3,57 @@
   "title": "HandleMsg",
   "anyOf": [
     {
+      "description": "Buy will try to buy ask and sell offer, up to limit offer tokens, or current balance",
       "type": "object",
       "required": [
-        "increment"
+        "buy"
       ],
       "properties": {
-        "increment": {
-          "type": "object"
+        "buy": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Uint128"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
         }
       }
     },
     {
+      "description": "Sell is the reverse of buy. Selling ask and buying offer.",
       "type": "object",
       "required": [
-        "reset"
+        "sell"
       ],
       "properties": {
-        "reset": {
+        "sell": {
           "type": "object",
-          "required": [
-            "count"
-          ],
           "properties": {
-            "count": {
-              "type": "integer",
-              "format": "int32"
+            "limit": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Uint128"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           }
         }
       }
     }
-  ]
+  ],
+  "definitions": {
+    "Uint128": {
+      "type": "string"
+    }
+  }
 }
