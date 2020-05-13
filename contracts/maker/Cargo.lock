@@ -550,6 +550,7 @@ dependencies = [
  "schemars",
  "serde",
  "snafu",
+ "terra-bindings",
 ]
 
 [[package]]
@@ -929,6 +930,15 @@ name = "target-lexicon"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab0e7238dcc7b40a7be719a25365910f6807bd864f4cce6b2e6b873658e2b19d"
+
+[[package]]
+name = "terra-bindings"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-std",
+ "schemars",
+ "serde",
+]
 
 [[package]]
 name = "thiserror"

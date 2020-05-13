@@ -35,6 +35,7 @@ cranelift = ["cosmwasm-vm/default-cranelift"]
 singlepass = ["cosmwasm-vm/default-singlepass"]
 
 [dependencies]
+terra-bindings = { path = "../../packages/bindings" }
 cosmwasm-std = { version = "0.8.0-alpha2", features = ["iterator"]}
 cosmwasm-storage = { version = "0.8.0-alpha2", features = ["iterator"]}
 schemars = "0.7"

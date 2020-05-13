@@ -46,49 +46,49 @@ fn proper_initialization() {
     assert_eq!(17, value.count);
 }
 
-#[test]
-fn increment() {
-    let mut deps = mock_instance(WASM, &coins(2, "token"));
-
-    let msg = InitMsg { count: 17 };
-    let env = mock_env(&deps.api, "creator", &coins(2, "token"));
-    let _res: InitResponse = init(&mut deps, env, msg).unwrap();
-
-    // beneficiary can release it
-    let env = mock_env(&deps.api, "anyone", &coins(2, "token"));
-    let msg = HandleMsg::Increment {};
-    let _res: HandleResponse = handle(&mut deps, env, msg).unwrap();
-
-    // should increase counter by 1
-    let res = query(&mut deps, QueryMsg::GetCount {}).unwrap();
-    let value: CountResponse = from_binary(&res).unwrap();
-    assert_eq!(18, value.count);
-}
-
-#[test]
-fn reset() {
-    let mut deps = mock_instance(WASM, &coins(2, "token"));
-
-    let msg = InitMsg { count: 17 };
-    let env = mock_env(&deps.api, "creator", &coins(2, "token"));
-    let _res: InitResponse = init(&mut deps, env, msg).unwrap();
-
-    // beneficiary can release it
-    let unauth_env = mock_env(&deps.api, "anyone", &coins(2, "token"));
-    let msg = HandleMsg::Reset { count: 5 };
-    let res: HandleResult = handle(&mut deps, unauth_env, msg);
-    match res.unwrap_err() {
-        StdError::Unauthorized { .. } => {}
-        _ => panic!("Expected unauthorized"),
-    }
-
-    // only the original creator can reset the counter
-    let auth_env = mock_env(&deps.api, "creator", &coins(2, "token"));
-    let msg = HandleMsg::Reset { count: 5 };
-    let _res: HandleResponse = handle(&mut deps, auth_env, msg).unwrap();
-
-    // should now be 5
-    let res = query(&mut deps, QueryMsg::GetCount {}).unwrap();
-    let value: CountResponse = from_binary(&res).unwrap();
-    assert_eq!(5, value.count);
-}
+// #[test]
+// fn increment() {
+//     let mut deps = mock_instance(WASM, &coins(2, "token"));
+//
+//     let msg = InitMsg { count: 17 };
+//     let env = mock_env(&deps.api, "creator", &coins(2, "token"));
+//     let _res: InitResponse = init(&mut deps, env, msg).unwrap();
+//
+//     // beneficiary can release it
+//     let env = mock_env(&deps.api, "anyone", &coins(2, "token"));
+//     let msg = HandleMsg::Increment {};
+//     let _res: HandleResponse = handle(&mut deps, env, msg).unwrap();
+//
+//     // should increase counter by 1
+//     let res = query(&mut deps, QueryMsg::GetCount {}).unwrap();
+//     let value: CountResponse = from_binary(&res).unwrap();
+//     assert_eq!(18, value.count);
+// }
+//
+// #[test]
+// fn reset() {
+//     let mut deps = mock_instance(WASM, &coins(2, "token"));
+//
+//     let msg = InitMsg { count: 17 };
+//     let env = mock_env(&deps.api, "creator", &coins(2, "token"));
+//     let _res: InitResponse = init(&mut deps, env, msg).unwrap();
+//
+//     // beneficiary can release it
+//     let unauth_env = mock_env(&deps.api, "anyone", &coins(2, "token"));
+//     let msg = HandleMsg::Reset { count: 5 };
+//     let res: HandleResult = handle(&mut deps, unauth_env, msg);
+//     match res.unwrap_err() {
+//         StdError::Unauthorized { .. } => {}
+//         _ => panic!("Expected unauthorized"),
+//     }
+//
+//     // only the original creator can reset the counter
+//     let auth_env = mock_env(&deps.api, "creator", &coins(2, "token"));
+//     let msg = HandleMsg::Reset { count: 5 };
+//     let _res: HandleResponse = handle(&mut deps, auth_env, msg).unwrap();
+//
+//     // should now be 5
+//     let res = query(&mut deps, QueryMsg::GetCount {}).unwrap();
+//     let value: CountResponse = from_binary(&res).unwrap();
+//     assert_eq!(5, value.count);
+// }

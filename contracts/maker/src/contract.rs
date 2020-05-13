@@ -1,9 +1,12 @@
-use cosmwasm_std::{
-    to_binary, unauthorized, Api, Binary, Env, Extern, HandleResponse, InitResponse, Querier,
-    StdResult, Storage,
-};
+use std::cmp::min;
 
-use crate::msg::{CountResponse, HandleMsg, InitMsg, QueryMsg};
+use cosmwasm_std::{
+    generic_err, to_binary, unauthorized, Api, Binary, Env, Extern, HandleResponse, InitResponse,
+    Querier, StdResult, Storage, Uint128,
+};
+use terra_bindings::{SwapMsg, TerraMsg};
+
+use crate::msg::{ExchangeRateResponse, HandleMsg, InitMsg, QueryMsg, SimulateResponse};
 use crate::state::{config, config_read, State};
 
 pub fn init<S: Storage, A: Api, Q: Querier>(
@@ -12,7 +15,8 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
     msg: InitMsg,
 ) -> StdResult<InitResponse> {
     let state = State {
-        count: msg.count,
+        ask: msg.ask,
+        offer: msg.offer,
         owner: env.message.sender,
     };
 
@@ -25,54 +29,90 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
     msg: HandleMsg,
-) -> StdResult<HandleResponse> {
+) -> StdResult<HandleResponse<TerraMsg>> {
     match msg {
-        HandleMsg::Increment {} => try_increment(deps, env),
-        HandleMsg::Reset { count } => try_reset(deps, env, count),
+        HandleMsg::Buy { limit } => buy(deps, env, limit),
+        HandleMsg::Sell { limit } => sell(deps, env, limit),
     }
 }
 
-pub fn try_increment<S: Storage, A: Api, Q: Querier>(
-    deps: &mut Extern<S, A, Q>,
-    _env: Env,
-) -> StdResult<HandleResponse> {
-    config(&mut deps.storage).update(&|mut state| {
-        state.count += 1;
-        Ok(state)
-    })?;
-
-    Ok(HandleResponse::default())
-}
-
-pub fn try_reset<S: Storage, A: Api, Q: Querier>(
+pub fn buy<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
-    count: i32,
-) -> StdResult<HandleResponse> {
-    config(&mut deps.storage).update(&|mut state| {
-        if env.message.sender != state.owner {
-            return Err(unauthorized());
+    limit: Option<Uint128>,
+) -> StdResult<HandleResponse<TerraMsg>> {
+    let state = config_read(&deps.storage).load()?;
+    if env.message.sender != state.owner {
+        return Err(unauthorized());
+    }
+
+    let contract_addr = deps.api.human_address(&env.contract.address)?;
+    let mut offer = deps.querier.query_balance(&contract_addr, &state.offer)?;
+    if offer.amount == Uint128(0) {
+        return Ok(HandleResponse::default());
+    }
+    if let Some(stop) = limit {
+        offer.amount = min(offer.amount, stop);
+    }
+
+    Ok(HandleResponse {
+        messages: vec![SwapMsg::Trade {
+            trader_addr: contract_addr,
+            offer_coin: offer,
+            ask_denom: state.ask,
         }
-        state.count = count;
-        Ok(state)
-    })?;
-    Ok(HandleResponse::default())
+        .into()],
+        log: vec![],
+        data: None,
+    })
+}
+
+pub fn sell<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    limit: Option<Uint128>,
+) -> StdResult<HandleResponse<TerraMsg>> {
+    let state = config_read(&deps.storage).load()?;
+    if env.message.sender != state.owner {
+        return Err(unauthorized());
+    }
+
+    let contract_addr = deps.api.human_address(&env.contract.address)?;
+    let mut sell = deps.querier.query_balance(&contract_addr, &state.ask)?;
+    if sell.amount == Uint128(0) {
+        return Ok(HandleResponse::default());
+    }
+    if let Some(stop) = limit {
+        sell.amount = min(sell.amount, stop);
+    }
+
+    Ok(HandleResponse {
+        messages: vec![SwapMsg::Trade {
+            trader_addr: contract_addr,
+            offer_coin: sell,
+            ask_denom: state.offer,
+        }
+        .into()],
+        log: vec![],
+        data: None,
+    })
 }
 
 pub fn query<S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>,
     msg: QueryMsg,
 ) -> StdResult<Binary> {
-    match msg {
-        QueryMsg::GetCount {} => query_count(deps),
-    }
+    Err(generic_err("unimplemented"))
+    // match msg {
+    //     QueryMsg::GetCount {} => query_count(deps),
+    // }
 }
 
-fn query_count<S: Storage, A: Api, Q: Querier>(deps: &Extern<S, A, Q>) -> StdResult<Binary> {
-    let state = config_read(&deps.storage).load()?;
-    let resp = CountResponse { count: state.count };
-    to_binary(&resp)
-}
+// fn query_count<S: Storage, A: Api, Q: Querier>(deps: &Extern<S, A, Q>) -> StdResult<Binary> {
+//     let state = config_read(&deps.storage).load()?;
+//     let resp = CountResponse { count: state.count };
+//     to_binary(&resp)
+// }
 
 #[cfg(test)]
 mod tests {
