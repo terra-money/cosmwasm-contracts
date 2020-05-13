@@ -4,7 +4,7 @@ workflows:
   test:
     jobs:
       - package_bindings
-#      - contract_maker
+      - contract_maker
       - fmt
       - clippy
 
@@ -122,10 +122,10 @@ jobs:
       - run:
           name: Format and check workspace
           command: cargo fmt -- --check
-#      - run:
-#          name: Format and check maker
-#          working_directory: ~/project/contracts/maker
-#          command: cargo fmt -- --check
+      - run:
+          name: Format and check maker
+          working_directory: ~/project/contracts/maker
+          command: cargo fmt -- --check
       - save_cache:
           paths:
             - /usr/local/cargo/registry
@@ -153,15 +153,15 @@ jobs:
       #
       - run:
           name: Clippy linting on binding
-          working_directory: ~/project/packages/binding
+          working_directory: ~/project/packages/bindings
           command: cargo clippy -- -D warnings
       #
       # Contracts
       #
-#      - run:
-#          name: Clippy linting on maker
-#          working_directory: ~/project/contracts/maker
-#          command: cargo clippy -- -D warnings
+      - run:
+          name: Clippy linting on maker
+          working_directory: ~/project/contracts/maker
+          command: cargo clippy -- -D warnings
       - save_cache:
           paths:
             - /usr/local/cargo/registry
