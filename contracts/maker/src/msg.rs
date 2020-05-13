@@ -24,7 +24,7 @@ pub enum QueryMsg {
     // Exchange rate returns how many ASK we can get for 1 OFFER
     ExchangeRate {},
     // Simulate will try to sell the given number of tokens (denom must be either ask or offer, we trade for the other)
-    Simulate { sell: Coin },
+    Simulate { offer: Coin },
 }
 
 /// Returns rate of ASK/OFFER

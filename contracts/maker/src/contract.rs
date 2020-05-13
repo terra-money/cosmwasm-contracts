@@ -1,10 +1,10 @@
 use std::cmp::min;
 
 use cosmwasm_std::{
-    generic_err, to_binary, unauthorized, Api, Binary, Env, Extern, HandleResponse, InitResponse,
-    Querier, StdResult, Storage, Uint128,
+    to_binary, unauthorized, Api, Binary, Coin, Env, Extern, HandleResponse, InitResponse, Querier,
+    StdResult, Storage, Uint128,
 };
-use terra_bindings::{SwapMsg, TerraMsg};
+use terra_bindings::{SwapMsg, TerraMsg, TerraQuerier};
 
 use crate::msg::{ExchangeRateResponse, HandleMsg, InitMsg, QueryMsg, SimulateResponse};
 use crate::state::{config, config_read, State};
@@ -102,17 +102,36 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>,
     msg: QueryMsg,
 ) -> StdResult<Binary> {
-    Err(generic_err("unimplemented"))
-    // match msg {
-    //     QueryMsg::GetCount {} => query_count(deps),
-    // }
+    match msg {
+        QueryMsg::ExchangeRate {} => query_rate(deps),
+        QueryMsg::Simulate { offer } => query_simulate(deps, offer),
+    }
 }
 
-// fn query_count<S: Storage, A: Api, Q: Querier>(deps: &Extern<S, A, Q>) -> StdResult<Binary> {
-//     let state = config_read(&deps.storage).load()?;
-//     let resp = CountResponse { count: state.count };
-//     to_binary(&resp)
-// }
+fn query_rate<S: Storage, A: Api, Q: Querier>(deps: &Extern<S, A, Q>) -> StdResult<Binary> {
+    let state = config_read(&deps.storage).load()?;
+    let rate = TerraQuerier::new(&deps.querier).query_exchange_rate(&state.offer, &state.ask)?;
+    let resp = ExchangeRateResponse {
+        rate,
+        ask: state.ask,
+        offer: state.offer,
+    };
+    to_binary(&resp)
+}
+
+fn query_simulate<S: Storage, A: Api, Q: Querier>(
+    deps: &Extern<S, A, Q>,
+    offer: Coin,
+) -> StdResult<Binary> {
+    let state = config_read(&deps.storage).load()?;
+    let receive =
+        TerraQuerier::new(&deps.querier).query_simulate_swap(offer.clone(), &state.ask)?;
+    let resp = SimulateResponse {
+        sell: offer,
+        buy: receive,
+    };
+    to_binary(&resp)
+}
 
 #[cfg(test)]
 mod tests {
