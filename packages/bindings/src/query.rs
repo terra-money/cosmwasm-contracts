@@ -1,11 +1,11 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{Coin, Decimal, QueryRequest};
+use cosmwasm_std::{Coin, Decimal, Querier, QueryRequest, StdResult};
 
+/// TerraQuery is an override of QueryRequest::Custom to access Terra-specific modules
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-/// TerraQuery is an override of QueryRequest::Custom to access Terra-specific modules
 pub enum TerraQuery {
     Swap(SwapQuery),
     // TODO: add for treasury and oracle
@@ -55,4 +55,50 @@ pub struct ExchangeRatesResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct SimulateSwapResponse {
     pub receive: Coin,
+}
+
+/// This is a helper wrapper to easily use our custom queries
+pub struct TerraQuerier<'a, Q: Querier> {
+    querier: &'a Q,
+}
+
+impl<'a, Q: Querier> TerraQuerier<'a, Q> {
+    pub fn new(querier: &'a Q) -> Self {
+        TerraQuerier { querier }
+    }
+
+    pub fn query_exchange_rate<T: Into<String>>(
+        &self,
+        offer: T,
+        ask: T,
+    ) -> StdResult<ExchangeRateResponse> {
+        let request = SwapQuery::ExchangeRate {
+            offer: offer.into(),
+            ask: ask.into(),
+        };
+        self.querier.custom_query(&request.into())
+    }
+
+    pub fn query_exchange_rates<T: Into<String>>(
+        &self,
+        offer: T,
+    ) -> StdResult<Vec<ExchangeRateResponse>> {
+        let request = SwapQuery::ExchangeRates {
+            offer: offer.into(),
+        };
+        let res: ExchangeRatesResponse = self.querier.custom_query(&request.into())?;
+        Ok(res.rates)
+    }
+
+    pub fn query_simulate_swap<T: Into<String>>(
+        &self,
+        offer: Coin,
+        ask: T,
+    ) -> StdResult<SimulateSwapResponse> {
+        let request = SwapQuery::Simulate {
+            offer,
+            ask: ask.into(),
+        };
+        self.querier.custom_query(&request.into())
+    }
 }
