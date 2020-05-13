@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ConfigResponse",
+  "description": "Human readable state",
+  "type": "object",
+  "required": [
+    "ask",
+    "offer",
+    "owner"
+  ],
+  "properties": {
+    "ask": {
+      "type": "string"
+    },
+    "offer": {
+      "type": "string"
+    },
+    "owner": {
+      "$ref": "#/definitions/HumanAddr"
+    }
+  },
+  "definitions": {
+    "HumanAddr": {
+      "type": "string"
+    }
+  }
+}

@@ -67,11 +67,7 @@ impl<'a, Q: Querier> TerraQuerier<'a, Q> {
         TerraQuerier { querier }
     }
 
-    pub fn query_exchange_rate<T: Into<String>>(
-        &self,
-        offer: T,
-        ask: T,
-    ) -> StdResult<Decimal> {
+    pub fn query_exchange_rate<T: Into<String>>(&self, offer: T, ask: T) -> StdResult<Decimal> {
         let request = SwapQuery::ExchangeRate {
             offer: offer.into(),
             ask: ask.into(),
@@ -91,11 +87,7 @@ impl<'a, Q: Querier> TerraQuerier<'a, Q> {
         Ok(res.rates)
     }
 
-    pub fn query_simulate_swap<T: Into<String>>(
-        &self,
-        offer: Coin,
-        ask: T,
-    ) -> StdResult<Coin> {
+    pub fn query_simulate_swap<T: Into<String>>(&self, offer: Coin, ask: T) -> StdResult<Coin> {
         let request = SwapQuery::Simulate {
             offer,
             ask: ask.into(),
