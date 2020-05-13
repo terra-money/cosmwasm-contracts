@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{Coin, Decimal, Uint128};
+use cosmwasm_std::{Coin, Decimal, HumanAddr, Uint128};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InitMsg {
@@ -42,4 +42,12 @@ pub struct ExchangeRateResponse {
 pub struct SimulateResponse {
     pub sell: Coin,
     pub buy: Coin,
+}
+
+/// Human readable state
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct ConfigResponse {
+    pub offer: String,
+    pub ask: String,
+    pub owner: HumanAddr,
 }

@@ -18,11 +18,11 @@
 //! 4. Anywhere you see query(&deps, ...) you must replace it with query(&mut deps, ...)
 
 use cosmwasm_std::testing::mock_env;
-use cosmwasm_std::{coins, from_binary, HandleResponse, HandleResult, InitResponse, StdError};
+use cosmwasm_std::{coins, from_binary, InitResponse};
+use cosmwasm_vm::testing::{init, mock_instance, query};
 
-use cosmwasm_vm::testing::{handle, init, mock_instance, query};
-
-use maker::msg::{CountResponse, HandleMsg, InitMsg, QueryMsg};
+use maker::msg::{ConfigResponse, InitMsg, QueryMsg};
+use terra_bindings::TerraMsg;
 
 // This line will test the output of cargo wasm
 static WASM: &[u8] = include_bytes!("../target/wasm32-unknown-unknown/release/maker.wasm");
@@ -33,17 +33,22 @@ static WASM: &[u8] = include_bytes!("../target/wasm32-unknown-unknown/release/ma
 fn proper_initialization() {
     let mut deps = mock_instance(WASM, &[]);
 
-    let msg = InitMsg { count: 17 };
+    let msg = InitMsg {
+        ask: "BTC".into(),
+        offer: "ETH".into(),
+    };
     let env = mock_env(&deps.api, "creator", &coins(1000, "earth"));
 
     // we can just call .unwrap() to assert this was a success
-    let res: InitResponse = init(&mut deps, env, msg).unwrap();
+    let res: InitResponse<TerraMsg> = init(&mut deps, env, msg).unwrap();
     assert_eq!(0, res.messages.len());
 
     // it worked, let's query the state
-    let res = query(&mut deps, QueryMsg::GetCount {}).unwrap();
-    let value: CountResponse = from_binary(&res).unwrap();
-    assert_eq!(17, value.count);
+    let res = query(&mut deps, QueryMsg::Config {}).unwrap();
+    let value: ConfigResponse = from_binary(&res).unwrap();
+    assert_eq!("BTC", value.ask.as_str());
+    assert_eq!("ETH", value.offer.as_str());
+    assert_eq!("creator", value.owner.as_str());
 }
 
 // #[test]

@@ -6,7 +6,9 @@ use cosmwasm_std::{
 };
 use terra_bindings::{SwapMsg, TerraMsg, TerraQuerier};
 
-use crate::msg::{ExchangeRateResponse, HandleMsg, InitMsg, QueryMsg, SimulateResponse};
+use crate::msg::{
+    ConfigResponse, ExchangeRateResponse, HandleMsg, InitMsg, QueryMsg, SimulateResponse,
+};
 use crate::state::{config, config_read, State};
 
 pub fn init<S: Storage, A: Api, Q: Querier>(
@@ -111,7 +113,12 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
 
 fn query_config<S: Storage, A: Api, Q: Querier>(deps: &Extern<S, A, Q>) -> StdResult<Binary> {
     let state = config_read(&deps.storage).load()?;
-    to_binary(&state)
+    let resp = ConfigResponse {
+        ask: state.ask,
+        offer: state.offer,
+        owner: deps.api.human_address(&state.owner)?,
+    };
+    to_binary(&resp)
 }
 
 fn query_rate<S: Storage, A: Api, Q: Querier>(deps: &Extern<S, A, Q>) -> StdResult<Binary> {
@@ -142,8 +149,9 @@ fn query_simulate<S: Storage, A: Api, Q: Querier>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::msg::ConfigResponse;
     use cosmwasm_std::testing::{mock_dependencies, mock_env};
-    use cosmwasm_std::{coins, from_binary, StdError};
+    use cosmwasm_std::{coins, from_binary};
 
     #[test]
     fn proper_initialization() {
@@ -160,9 +168,11 @@ mod tests {
         assert_eq!(0, res.messages.len());
 
         // it worked, let's query the state
-        let res = query(&deps, QueryMsg::GetCount {}).unwrap();
-        let value: CountResponse = from_binary(&res).unwrap();
-        assert_eq!(17, value.count);
+        let res = query(&deps, QueryMsg::Config {}).unwrap();
+        let value: ConfigResponse = from_binary(&res).unwrap();
+        assert_eq!("BTC", value.ask.as_str());
+        assert_eq!("ETH", value.offer.as_str());
+        assert_eq!("creator", value.owner.as_str());
     }
 
     // #[test]
