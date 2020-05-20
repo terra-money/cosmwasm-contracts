@@ -37,7 +37,7 @@ impl<'a, Q: Querier> TerraQuerier<'a, Q> {
     }
 
     pub fn query_reward_weight(&self) -> StdResult<Decimal> {
-        let request = TreasuryQuery::RewardWeight {};
+        let request = TreasuryQuery::RewardsWeight {};
         let res: RewardsWeightResponse = self.querier.custom_query(&request.into())?;
         Ok(res.weight)
     }

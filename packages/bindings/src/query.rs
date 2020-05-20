@@ -88,7 +88,7 @@ pub enum TreasuryQuery {
     TaxProceeds {},
     // TODO: review
     TaxCap { denom: String },
-    RewardWeight {},
+    RewardsWeight {},
     SeigniorageProceeds {},
 }
 

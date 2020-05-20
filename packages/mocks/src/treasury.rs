@@ -1,7 +1,10 @@
-use cosmwasm_std::{Coin, Decimal, QuerierResult, Uint128};
+use cosmwasm_std::{to_binary, Coin, Decimal, QuerierResult, Uint128};
 use std::collections::HashMap;
 
-use terra_bindings::TreasuryQuery;
+use terra_bindings::{
+    RewardsWeightResponse, SeigniorageProceedsResponse, TaxCapResponse, TaxProceedsResponse,
+    TaxRateResponse, TreasuryQuery,
+};
 
 #[derive(Clone)]
 pub struct TreasuryQuerier {
@@ -47,29 +50,33 @@ impl TreasuryQuerier {
 
     pub fn query(&self, request: &TreasuryQuery) -> QuerierResult {
         match request {
-            TreasuryQuery::TaxRate { .. } => panic!("not implemented"),
-            _ => panic!("not implemented"),
-            // SwapQuery::Simulate { offer, ask } => {
-            //     let pair = (offer.denom.clone(), ask.clone());
-            //     // proper error on not found, serialize result on found
-            //     let rate = self.rates.get(&pair);
-            //     let amount = match rate {
-            //         Some(r) => offer.amount * r.clone(),
-            //         None => {
-            //             return Ok(Err(generic_err(format!(
-            //                 "No rate listed for {} to {}",
-            //                 pair.0, pair.1
-            //             ))))
-            //         }
-            //     };
-            //     let swap_res = SimulateSwapResponse {
-            //         receive: Coin {
-            //             amount,
-            //             denom: ask.clone(),
-            //         },
-            //     };
-            //     Ok(to_binary(&swap_res))
-            // }
+            TreasuryQuery::TaxRate {} => {
+                let res = TaxRateResponse { tax: self.tax_rate };
+                Ok(to_binary(&res))
+            }
+            TreasuryQuery::TaxCap { denom } => {
+                let cap = self.tax_cap.get(denom).copied().unwrap_or_default();
+                let res = TaxCapResponse { cap };
+                Ok(to_binary(&res))
+            }
+            TreasuryQuery::TaxProceeds {} => {
+                let res = TaxProceedsResponse {
+                    proceeds: self.tax_proceeds.clone(),
+                };
+                Ok(to_binary(&res))
+            }
+            TreasuryQuery::RewardsWeight {} => {
+                let res = RewardsWeightResponse {
+                    weight: self.reward_rate,
+                };
+                Ok(to_binary(&res))
+            }
+            TreasuryQuery::SeigniorageProceeds {} => {
+                let res = SeigniorageProceedsResponse {
+                    size: self.seigniorage_proceeds,
+                };
+                Ok(to_binary(&res))
+            }
         }
     }
 }
