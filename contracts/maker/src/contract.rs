@@ -153,11 +153,9 @@ fn query_reflect<S: Storage, A: Api, Q: Querier>(
 ) -> StdResult<Binary> {
     let request: QueryRequest<TerraQuery> = query.into();
     let raw_request = to_vec(&request)?;
-    let resp = deps
-        .querier
+    deps.querier
         .raw_query(&raw_request)
-        .map_err(|e| generic_err(format!("System error: {}", e)))?;
-    resp
+        .map_err(|e| generic_err(format!("System error: {}", e)))?
 }
 
 #[cfg(test)]
