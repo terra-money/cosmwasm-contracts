@@ -57,6 +57,7 @@ jobs:
             - target/debug/deps
           key: cargocache-v2-package_bindings-rust:1.41.1-{{ checksum "Cargo.lock" }}
 
+  # Note: mocks does not compile to wasm as it is just for testing
   package_mocks:
     docker:
       - image: rust:1.41.1
@@ -69,16 +70,9 @@ jobs:
           keys:
             - cargocache-v2-package_mocks-rust:1.41.1-{{ checksum "Cargo.lock" }}
       - run:
-          name: Add wasm32 target
-          command: rustup target add wasm32-unknown-unknown && rustup target list --installed
-      - run:
           name: Build library for native target
           working_directory: ~/project/packages/mocks
           command: cargo build --locked --no-default-features
-      - run:
-          name: Build library for wasm target
-          working_directory: ~/project/packages/mocks
-          command: cargo wasm --locked --no-default-features
       - run:
           name: Run unit tests
           working_directory: ~/project/packages/mocks
