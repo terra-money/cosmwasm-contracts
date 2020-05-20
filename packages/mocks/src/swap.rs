@@ -15,7 +15,7 @@ impl SwapQuerier {
     pub fn new(rates: &[(TokenPair, Decimal)]) -> Self {
         let mut map = HashMap::new();
         for (pair, rate) in rates.iter() {
-            map.insert(pair.clone(), rate.clone());
+            map.insert(pair.clone(), *rate);
         }
         SwapQuerier { rates: map }
     }
@@ -27,7 +27,7 @@ impl SwapQuerier {
                 // proper error on not found, serialize result on found
                 let rate = self.rates.get(&pair);
                 let amount = match rate {
-                    Some(r) => offer.amount * r.clone(),
+                    Some(r) => offer.amount * *r,
                     None => {
                         return Ok(Err(generic_err(format!(
                             "No rate listed for {} to {}",
