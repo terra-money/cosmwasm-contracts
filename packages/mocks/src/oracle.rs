@@ -16,8 +16,8 @@ pub(crate) fn rates_to_map(
 ) -> HashMap<String, BTreeMap<String, Decimal>> {
     let mut rate_map: HashMap<String, BTreeMap<String, Decimal>> = HashMap::new();
     for (offer, ask, rate) in rates.iter() {
-        let offer = offer.to_string();
-        let ask = ask.to_string();
+        let offer = (*offer).to_string();
+        let ask = (*ask).to_string();
         if let Some(sub_map) = rate_map.get_mut(&offer) {
             sub_map.insert(ask, *rate);
         } else {
@@ -33,7 +33,7 @@ impl OracleQuerier {
     pub fn new(rates: &[(&str, &str, Decimal)], taxes: &[(&str, Decimal)]) -> Self {
         let mut tax_map = HashMap::new();
         for (denom, tax) in taxes.iter() {
-            tax_map.insert(denom.to_string(), *tax);
+            tax_map.insert((*denom).to_string(), *tax);
         }
 
         OracleQuerier {

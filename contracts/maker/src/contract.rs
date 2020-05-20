@@ -174,6 +174,9 @@ mod tests {
     use cosmwasm_std::testing::mock_env;
     use cosmwasm_std::{coin, coins, from_binary, CosmosMsg, Decimal, HumanAddr, StdError};
 
+    use terra_bindings::{
+        ExchangeRateResponse as TerraExchangeRateResponse, ExchangeRatesResponse, OracleQuery,
+    };
     use terra_mocks::mock_dependencies;
 
     #[test]
@@ -397,6 +400,49 @@ mod tests {
             SimulateResponse {
                 sell: coin(10, "BTC"),
                 buy: coin(66, "ETH"),
+            }
+        );
+    }
+
+    #[test]
+    fn query_exchange_rates() {
+        let mut deps = mock_dependencies(20, &[]);
+        // set the exchange rates between ETH and BTC (and back)
+        deps.querier.with_market(
+            &[
+                ("ETH", "BTC", Decimal::percent(15)),
+                ("BTC", "ETH", Decimal::percent(666)),
+                ("ETH", "ATOM", Decimal::percent(1234)),
+            ],
+            &[],
+        );
+
+        let msg = InitMsg {
+            ask: "BTC".into(),
+            offer: "ETH".into(),
+        };
+        let env = mock_env(&deps.api, "creator", &[]);
+        let _res = init(&mut deps, env, msg).unwrap();
+
+        // check the config
+        let rates_query = TerraQuery::Oracle(OracleQuery::ExchangeRates {
+            offer: "ETH".to_string(),
+        });
+        let res = query(&mut deps, QueryMsg::Reflect { query: rates_query }).unwrap();
+        let rates: ExchangeRatesResponse = from_binary(&res).unwrap();
+        assert_eq!(2, rates.rates.len());
+        assert_eq!(
+            rates.rates[0],
+            TerraExchangeRateResponse {
+                rate: Decimal::percent(1234),
+                ask: "ATOM".to_string(),
+            }
+        );
+        assert_eq!(
+            rates.rates[1],
+            TerraExchangeRateResponse {
+                rate: Decimal::percent(15),
+                ask: "BTC".to_string(),
             }
         );
     }
