@@ -190,7 +190,7 @@ mod tests {
     }
 
     #[test]
-    fn buy() {
+    fn buy_limit() {
         let mut deps = mock_dependencies(20, &coins(200, "ETH"));
 
         let msg = InitMsg {
@@ -246,32 +246,71 @@ mod tests {
         }
     }
 
-    //
-    // #[test]
-    // fn reset() {
-    //     let mut deps = mock_dependencies(20, &coins(2, "token"));
-    //
-    //     let msg = InitMsg { count: 17 };
-    //     let env = mock_env(&deps.api, "creator", &coins(2, "token"));
-    //     let _res = init(&mut deps, env, msg).unwrap();
-    //
-    //     // beneficiary can release it
-    //     let unauth_env = mock_env(&deps.api, "anyone", &coins(2, "token"));
-    //     let msg = HandleMsg::Reset { count: 5 };
-    //     let res = handle(&mut deps, unauth_env, msg);
-    //     match res {
-    //         Err(StdError::Unauthorized { .. }) => {}
-    //         _ => panic!("Must return unauthorized error"),
-    //     }
-    //
-    //     // only the original creator can reset the counter
-    //     let auth_env = mock_env(&deps.api, "creator", &coins(2, "token"));
-    //     let msg = HandleMsg::Reset { count: 5 };
-    //     let _res = handle(&mut deps, auth_env, msg).unwrap();
-    //
-    //     // should now be 5
-    //     let res = query(&deps, QueryMsg::GetCount {}).unwrap();
-    //     let value: CountResponse = from_binary(&res).unwrap();
-    //     assert_eq!(5, value.count);
-    // }
+    #[test]
+    fn sell_no_limit() {
+        let mut deps = mock_dependencies(20, &[coin(200, "ETH"), coin(120, "BTC")]);
+
+        let msg = InitMsg {
+            ask: "BTC".into(),
+            offer: "ETH".into(),
+        };
+        let env = mock_env(&deps.api, "creator", &[]);
+        let _res = init(&mut deps, env, msg).unwrap();
+
+        // we sell all the BTC (faked balance above)
+        let env = mock_env(&deps.api, "creator", &[]);
+        let contract_addr = deps.api.human_address(&env.contract.address).unwrap();
+        let msg = HandleMsg::Sell { limit: None };
+        let res = handle(&mut deps, env, msg).unwrap();
+
+        // make sure we produce proper trade order
+        assert_eq!(1, res.messages.len());
+        if let CosmosMsg::Custom(TerraMsg::Swap(SwapMsg::Trade {
+            trader_addr,
+            offer_coin,
+            ask_denom,
+        })) = &res.messages[0]
+        {
+            assert_eq!(trader_addr, &contract_addr);
+            assert_eq!(offer_coin, &coin(120, "BTC"));
+            assert_eq!(ask_denom, "ETH");
+        } else {
+            panic!("Expected swap message, got: {:?}", &res.messages[0]);
+        }
+    }
+
+    #[test]
+    fn sell_limit_higher_than_balance() {
+        let mut deps = mock_dependencies(20, &[coin(200, "ETH"), coin(133, "BTC")]);
+
+        let msg = InitMsg {
+            ask: "BTC".into(),
+            offer: "ETH".into(),
+        };
+        let env = mock_env(&deps.api, "creator", &[]);
+        let _res = init(&mut deps, env, msg).unwrap();
+
+        // we sell all the BTC (faked balance above)
+        let env = mock_env(&deps.api, "creator", &[]);
+        let contract_addr = deps.api.human_address(&env.contract.address).unwrap();
+        let msg = HandleMsg::Sell {
+            limit: Some(Uint128(250)),
+        };
+        let res = handle(&mut deps, env, msg).unwrap();
+
+        // make sure we produce proper trade order
+        assert_eq!(1, res.messages.len());
+        if let CosmosMsg::Custom(TerraMsg::Swap(SwapMsg::Trade {
+            trader_addr,
+            offer_coin,
+            ask_denom,
+        })) = &res.messages[0]
+        {
+            assert_eq!(trader_addr, &contract_addr);
+            assert_eq!(offer_coin, &coin(133, "BTC"));
+            assert_eq!(ask_denom, "ETH");
+        } else {
+            panic!("Expected swap message, got: {:?}", &res.messages[0]);
+        }
+    }
 }
