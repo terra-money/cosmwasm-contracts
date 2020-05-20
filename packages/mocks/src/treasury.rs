@@ -31,20 +31,20 @@ impl TreasuryQuerier {
     pub fn new(
         tax_rate: Decimal,
         tax_proceeds: &[Coin],
-        tax_caps: &[(String, Uint128)],
+        tax_caps: &[(&str, u128)],
         reward_rate: Decimal,
-        seigniorage_proceeds: Uint128,
+        seigniorage_proceeds: u128,
     ) -> Self {
         let mut tax_cap = HashMap::new();
         for (denom, cap) in tax_caps.iter() {
-            tax_cap.insert(denom.to_string(), *cap);
+            tax_cap.insert(denom.to_string(), Uint128(*cap));
         }
         TreasuryQuerier {
             tax_rate,
             tax_proceeds: tax_proceeds.to_vec(),
             tax_cap,
             reward_rate,
-            seigniorage_proceeds,
+            seigniorage_proceeds: Uint128(seigniorage_proceeds),
         }
     }
 

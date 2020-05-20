@@ -176,6 +176,8 @@ mod tests {
 
     use terra_bindings::{
         ExchangeRateResponse as TerraExchangeRateResponse, ExchangeRatesResponse, OracleQuery,
+        RewardsWeightResponse, SeigniorageProceedsResponse, TaxCapResponse, TaxProceedsResponse,
+        TaxRateResponse, TreasuryQuery,
     };
     use terra_mocks::mock_dependencies;
 
@@ -424,7 +426,7 @@ mod tests {
         let env = mock_env(&deps.api, "creator", &[]);
         let _res = init(&mut deps, env, msg).unwrap();
 
-        // check the config
+        // check the general exchange query
         let rates_query = TerraQuery::Oracle(OracleQuery::ExchangeRates {
             offer: "ETH".to_string(),
         });
@@ -445,5 +447,65 @@ mod tests {
                 ask: "BTC".to_string(),
             }
         );
+    }
+
+    #[test]
+    fn query_treasury() {
+        let mut deps = mock_dependencies(20, &[]);
+        // set the exchange rates between ETH and BTC (and back)
+        let tax_rate = Decimal::percent(2);
+        let tax_proceeds = vec![coin(10, "ETH"), coin(20, "BTC")];
+        let tax_caps = &[("ETH", 1000u128), ("BTC", 500u128)];
+        let reward = Decimal::permille(5);
+        let seignorage = 777;
+
+        deps.querier
+            .with_treasury(tax_rate, &tax_proceeds, tax_caps, reward, seignorage);
+
+        let msg = InitMsg {
+            ask: "BTC".into(),
+            offer: "ETH".into(),
+        };
+        let env = mock_env(&deps.api, "creator", &[]);
+        let _res = init(&mut deps, env, msg).unwrap();
+
+        // test all treasury functions
+        let tax_rate_query = QueryMsg::Reflect {
+            query: TreasuryQuery::TaxRate {}.into(),
+        };
+        let res = query(&mut deps, tax_rate_query).unwrap();
+        let rate: TaxRateResponse = from_binary(&res).unwrap();
+        assert_eq!(rate.tax, tax_rate);
+
+        let tax_cap_query = QueryMsg::Reflect {
+            query: TreasuryQuery::TaxCap {
+                denom: "ETH".to_string(),
+            }
+            .into(),
+        };
+        let res = query(&mut deps, tax_cap_query).unwrap();
+        let cap: TaxCapResponse = from_binary(&res).unwrap();
+        assert_eq!(cap.cap, Uint128(1000));
+
+        let tax_proceeds_query = QueryMsg::Reflect {
+            query: TreasuryQuery::TaxProceeds {}.into(),
+        };
+        let res = query(&mut deps, tax_proceeds_query).unwrap();
+        let proceeds: TaxProceedsResponse = from_binary(&res).unwrap();
+        assert_eq!(proceeds.proceeds, tax_proceeds);
+
+        let rewards_query = QueryMsg::Reflect {
+            query: TreasuryQuery::RewardsWeight {}.into(),
+        };
+        let res = query(&mut deps, rewards_query).unwrap();
+        let rewards: RewardsWeightResponse = from_binary(&res).unwrap();
+        assert_eq!(rewards.weight, reward);
+
+        let seigniorage_query = QueryMsg::Reflect {
+            query: TreasuryQuery::SeigniorageProceeds {}.into(),
+        };
+        let res = query(&mut deps, seigniorage_query).unwrap();
+        let proceeds: SeigniorageProceedsResponse = from_binary(&res).unwrap();
+        assert_eq!(proceeds.size, Uint128(seignorage));
     }
 }

@@ -3,7 +3,7 @@ use cosmwasm_std::testing::{
 };
 use cosmwasm_std::{
     from_slice, Coin, Decimal, Extern, FullDelegation, HumanAddr, Querier, QuerierResult,
-    QueryRequest, SystemError, Uint128, Validator,
+    QueryRequest, SystemError, Validator,
 };
 
 use crate::{OracleQuerier, SwapQuerier, TreasuryQuerier};
@@ -94,9 +94,9 @@ impl TerraMockQuerier {
         &mut self,
         tax_rate: Decimal,
         tax_proceeds: &[Coin],
-        tax_caps: &[(String, Uint128)],
+        tax_caps: &[(&str, u128)],
         reward_rate: Decimal,
-        seigniorage_proceeds: Uint128,
+        seigniorage_proceeds: u128,
     ) {
         self.treasury = TreasuryQuerier::new(
             tax_rate,
