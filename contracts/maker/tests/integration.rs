@@ -17,14 +17,17 @@
 //!      });
 //! 4. Anywhere you see query(&deps, ...) you must replace it with query(&mut deps, ...)
 
-use cosmwasm_std::{coins, from_binary, Coin, InitResponse};
-use cosmwasm_vm::testing::{
-    init, mock_dependencies, mock_env, query, MockApi, MockQuerier, MockStorage,
+use cosmwasm_std::{
+    coin, coins, from_binary, Coin, CosmosMsg, HandleResponse, InitResponse, Uint128,
 };
-use cosmwasm_vm::Instance;
+use cosmwasm_vm::testing::{
+    handle, init, mock_dependencies, mock_env, query, MockApi, MockQuerier, MockStorage,
+};
+use cosmwasm_vm::{Api, Instance};
 
-use maker::msg::{ConfigResponse, InitMsg, QueryMsg};
-use terra_bindings::TerraMsg;
+use terra_bindings::{SwapMsg, TerraMsg};
+
+use maker::msg::{ConfigResponse, HandleMsg, InitMsg, QueryMsg};
 
 // This line will test the output of cargo wasm
 static WASM: &[u8] = include_bytes!("../target/wasm32-unknown-unknown/release/maker.wasm");
@@ -33,6 +36,7 @@ static WASM: &[u8] = include_bytes!("../target/wasm32-unknown-unknown/release/ma
 
 const DEFAULT_GAS_LIMIT: u64 = 500_000;
 
+// TODO: improve the whole state of this
 pub fn mock_instance(
     wasm: &[u8],
     contract_balance: &[Coin],
@@ -66,49 +70,37 @@ fn proper_initialization() {
     assert_eq!("creator", value.owner.as_str());
 }
 
-// #[test]
-// fn increment() {
-//     let mut deps = mock_instance(WASM, &coins(2, "token"));
-//
-//     let msg = InitMsg { count: 17 };
-//     let env = mock_env(&deps.api, "creator", &coins(2, "token"));
-//     let _res: InitResponse = init(&mut deps, env, msg).unwrap();
-//
-//     // beneficiary can release it
-//     let env = mock_env(&deps.api, "anyone", &coins(2, "token"));
-//     let msg = HandleMsg::Increment {};
-//     let _res: HandleResponse = handle(&mut deps, env, msg).unwrap();
-//
-//     // should increase counter by 1
-//     let res = query(&mut deps, QueryMsg::GetCount {}).unwrap();
-//     let value: CountResponse = from_binary(&res).unwrap();
-//     assert_eq!(18, value.count);
-// }
-//
-// #[test]
-// fn reset() {
-//     let mut deps = mock_instance(WASM, &coins(2, "token"));
-//
-//     let msg = InitMsg { count: 17 };
-//     let env = mock_env(&deps.api, "creator", &coins(2, "token"));
-//     let _res: InitResponse = init(&mut deps, env, msg).unwrap();
-//
-//     // beneficiary can release it
-//     let unauth_env = mock_env(&deps.api, "anyone", &coins(2, "token"));
-//     let msg = HandleMsg::Reset { count: 5 };
-//     let res: HandleResult = handle(&mut deps, unauth_env, msg);
-//     match res.unwrap_err() {
-//         StdError::Unauthorized { .. } => {}
-//         _ => panic!("Expected unauthorized"),
-//     }
-//
-//     // only the original creator can reset the counter
-//     let auth_env = mock_env(&deps.api, "creator", &coins(2, "token"));
-//     let msg = HandleMsg::Reset { count: 5 };
-//     let _res: HandleResponse = handle(&mut deps, auth_env, msg).unwrap();
-//
-//     // should now be 5
-//     let res = query(&mut deps, QueryMsg::GetCount {}).unwrap();
-//     let value: CountResponse = from_binary(&res).unwrap();
-//     assert_eq!(5, value.count);
-// }
+#[test]
+fn buy_limit() {
+    let mut deps = mock_instance(WASM, &coins(200, "ETH"));
+
+    let msg = InitMsg {
+        ask: "BTC".into(),
+        offer: "ETH".into(),
+    };
+    let env = mock_env(&deps.api, "creator", &coins(200, "ETH"));
+    let _res: InitResponse<TerraMsg> = init(&mut deps, env, msg).unwrap();
+
+    // we buy BTC with half the ETH
+    let env = mock_env(&deps.api, "creator", &[]);
+    let contract_addr = deps.api.human_address(&env.contract.address).unwrap();
+    let msg = HandleMsg::Buy {
+        limit: Some(Uint128(100)),
+    };
+    let res: HandleResponse<TerraMsg> = handle(&mut deps, env, msg).unwrap();
+
+    // make sure we produce proper trade order
+    assert_eq!(1, res.messages.len());
+    if let CosmosMsg::Custom(TerraMsg::Swap(SwapMsg::Trade {
+        trader_addr,
+        offer_coin,
+        ask_denom,
+    })) = &res.messages[0]
+    {
+        assert_eq!(trader_addr, &contract_addr);
+        assert_eq!(offer_coin, &coin(100, "ETH"));
+        assert_eq!(ask_denom, "BTC");
+    } else {
+        panic!("Expected swap message, got: {:?}", &res.messages[0]);
+    }
+}

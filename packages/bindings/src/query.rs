@@ -88,8 +88,14 @@ pub enum TreasuryQuery {
     TaxProceeds {},
     // TODO: review
     TaxCap { denom: String },
-    RewardWeight {},
+    RewardsWeight {},
     SeigniorageProceeds {},
+}
+
+impl Into<TerraQuery> for TreasuryQuery {
+    fn into(self) -> TerraQuery {
+        TerraQuery::Treasury(self)
+    }
 }
 
 // This is a simpler way to making queries

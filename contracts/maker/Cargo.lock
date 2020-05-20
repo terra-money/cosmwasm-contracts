@@ -551,6 +551,7 @@ dependencies = [
  "serde",
  "snafu",
  "terra-bindings",
+ "terra-mocks",
 ]
 
 [[package]]
@@ -938,6 +939,16 @@ dependencies = [
  "cosmwasm-std",
  "schemars",
  "serde",
+]
+
+[[package]]
+name = "terra-mocks"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-std",
+ "schemars",
+ "serde",
+ "terra-bindings",
 ]
 
 [[package]]

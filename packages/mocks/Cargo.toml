@@ -1,19 +1,17 @@
 [package]
-name = "terra-bindings"
+name = "terra-mocks"
 version = "0.1.0"
 authors = ["Ethan Frey <ethanfrey@users.noreply.github.com>"]
 edition = "2018"
-description = "Bindings for CosmWasm contracts to call into custom modules of Terra Core"
-repository = "https://github.com/CosmWasm/terra-contract/tree/master/packages/bindings"
+description = "Mocks to use for testing Terra Contracts"
+repository = "https://github.com/CosmWasm/terra-contract/tree/master/packages/mocks"
 license = "Apache-2.0"
 readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-cosmwasm-std = { version = "0.8.0-alpha3" , features = ["staking"] }
+terra-bindings = { path = "../bindings", version = "0.1.0" }
+cosmwasm-std = { version = "0.8.0-alpha3" }
 schemars = "0.7"
 serde = { version = "1.0.103", default-features = false, features = ["derive"] }
-
-[dev-dependencies]
-cosmwasm-schema = { version = "0.8.0-alpha3" }
