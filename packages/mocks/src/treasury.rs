@@ -80,3 +80,49 @@ impl TreasuryQuerier {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use cosmwasm_std::{coin, from_binary};
+
+    #[test]
+    fn queries() {
+        // set the exchange rates between ETH and BTC (and back)
+        let tax_rate = Decimal::percent(2);
+        let tax_proceeds = vec![coin(10, "ETH"), coin(20, "BTC")];
+        let tax_caps = &[("ETH", 1000u128), ("BTC", 500u128)];
+        let reward = Decimal::permille(5);
+        let seignorage = 777;
+
+        let querier = TreasuryQuerier::new(tax_rate, &tax_proceeds, tax_caps, reward, seignorage);
+
+        // test all treasury functions
+        let tax_rate_query = TreasuryQuery::TaxRate {};
+        let res = querier.query(&tax_rate_query).unwrap().unwrap();
+        let rate: TaxRateResponse = from_binary(&res).unwrap();
+        assert_eq!(rate.tax, tax_rate);
+
+        let tax_cap_query = TreasuryQuery::TaxCap {
+            denom: "ETH".to_string(),
+        };
+        let res = querier.query(&tax_cap_query).unwrap().unwrap();
+        let cap: TaxCapResponse = from_binary(&res).unwrap();
+        assert_eq!(cap.cap, Uint128(1000));
+
+        let tax_proceeds_query = TreasuryQuery::TaxProceeds {};
+        let res = querier.query(&tax_proceeds_query).unwrap().unwrap();
+        let proceeds: TaxProceedsResponse = from_binary(&res).unwrap();
+        assert_eq!(proceeds.proceeds, tax_proceeds);
+
+        let rewards_query = TreasuryQuery::RewardsWeight {};
+        let res = querier.query(&rewards_query).unwrap().unwrap();
+        let rewards: RewardsWeightResponse = from_binary(&res).unwrap();
+        assert_eq!(rewards.weight, reward);
+
+        let seigniorage_query = TreasuryQuery::SeigniorageProceeds {};
+        let res = querier.query(&seigniorage_query).unwrap().unwrap();
+        let proceeds: SeigniorageProceedsResponse = from_binary(&res).unwrap();
+        assert_eq!(proceeds.size, Uint128(seignorage));
+    }
+}

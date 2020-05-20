@@ -42,3 +42,62 @@ impl SwapQuerier {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use cosmwasm_std::{coin, from_binary, StdError};
+
+    #[test]
+    fn forward_swap() {
+        let eth2btc = Decimal::percent(15);
+        let btc2eth = Decimal::percent(666);
+
+        let querier = SwapQuerier::new(&[("ETH", "BTC", eth2btc), ("BTC", "ETH", btc2eth)]);
+
+        // test forward swap
+        let forward_query = SwapQuery::Simulate {
+            offer: coin(100, "ETH"),
+            ask: "BTC".to_string(),
+        };
+        let res = querier.query(&forward_query).unwrap().unwrap();
+        let sim: SimulateSwapResponse = from_binary(&res).unwrap();
+        assert_eq!(sim.receive, coin(15, "BTC"));
+    }
+
+    #[test]
+    fn reverse_swap() {
+        let eth2btc = Decimal::percent(15);
+        let btc2eth = Decimal::percent(666);
+
+        let querier = SwapQuerier::new(&[("ETH", "BTC", eth2btc), ("BTC", "ETH", btc2eth)]);
+
+        // test forward swap
+        let forward_query = SwapQuery::Simulate {
+            offer: coin(50, "BTC"),
+            ask: "ETH".to_string(),
+        };
+        let res = querier.query(&forward_query).unwrap().unwrap();
+        let sim: SimulateSwapResponse = from_binary(&res).unwrap();
+        assert_eq!(sim.receive, coin(333, "ETH"));
+    }
+
+    #[test]
+    fn unlisted_pair() {
+        let eth2btc = Decimal::percent(15);
+        let btc2eth = Decimal::percent(666);
+
+        let querier = SwapQuerier::new(&[("ETH", "BTC", eth2btc), ("BTC", "ETH", btc2eth)]);
+
+        // test forward swap
+        let forward_query = SwapQuery::Simulate {
+            offer: coin(100, "ETH"),
+            ask: "ATOM".to_string(),
+        };
+        let res = querier.query(&forward_query).unwrap();
+        match res.unwrap_err() {
+            StdError::GenericErr { msg, .. } => assert_eq!(msg, "No rate listed for ETH to ATOM"),
+            _ => panic!("unexpected error"),
+        }
+    }
+}
