@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{Coin, Decimal, Querier, QueryRequest, StdResult, Uint128};
+use cosmwasm_std::{Coin, Decimal, QueryRequest, Uint128};
 
 /// TerraQuery is an override of QueryRequest::Custom to access Terra-specific modules
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -51,7 +51,14 @@ pub enum OracleQuery {
     ExchangeRates { offer: String },
     // Return the tobin tax charged on exchanges with this token
     // (TODO: define if this applies to the offer or the ask?)
-    TobinTax { denom: String},
+    TobinTax { denom: String },
+}
+
+// This is a simpler way to making queries
+impl Into<QueryRequest<TerraQuery>> for OracleQuery {
+    fn into(self) -> QueryRequest<TerraQuery> {
+        QueryRequest::Custom(TerraQuery::Oracle(self))
+    }
 }
 
 /// ExchangeRateResponse is data format returned from OracleRequest::ExchangeRate query
@@ -73,23 +80,23 @@ pub struct TobinTaxResponse {
     pub tax: Decimal,
 }
 
-// This is a simpler way to making queries
-impl Into<QueryRequest<TerraQuery>> for OracleQuery {
-    fn into(self) -> QueryRequest<TerraQuery> {
-        QueryRequest::Custom(TerraQuery::Oracle(self))
-    }
-}
-
 /// This contains all queries that can be made to the treasury module
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum TreasuryQuery {
     TaxRate {},
-    TaxProceeds{},
+    TaxProceeds {},
     // TODO: review
     TaxCap { denom: String },
     RewardWeight {},
     SeigniorageProceeds {},
+}
+
+// This is a simpler way to making queries
+impl Into<QueryRequest<TerraQuery>> for TreasuryQuery {
+    fn into(self) -> QueryRequest<TerraQuery> {
+        QueryRequest::Custom(TerraQuery::Treasury(self))
+    }
 }
 
 /// TaxRateResponse is data format returned from TreasuryRequest::TaxRate query
@@ -122,46 +129,4 @@ pub struct RewardsWeightResponse {
 pub struct SeigniorageProceedsResponse {
     // TODO: verify what this is
     pub size: Uint128,
-}
-
-/***** TODO move to traits *********/
-
-/// This is a helper wrapper to easily use our custom queries
-pub struct TerraQuerier<'a, Q: Querier> {
-    querier: &'a Q,
-}
-
-impl<'a, Q: Querier> TerraQuerier<'a, Q> {
-    pub fn new(querier: &'a Q) -> Self {
-        TerraQuerier { querier }
-    }
-
-    pub fn query_exchange_rate<T: Into<String>>(&self, offer: T, ask: T) -> StdResult<Decimal> {
-        let request = OracleQuery::ExchangeRate {
-            offer: offer.into(),
-            ask: ask.into(),
-        };
-        let res: ExchangeRateResponse = self.querier.custom_query(&request.into())?;
-        Ok(res.rate)
-    }
-
-    pub fn query_exchange_rates<T: Into<String>>(
-        &self,
-        offer: T,
-    ) -> StdResult<Vec<ExchangeRateResponse>> {
-        let request = OracleQuery::ExchangeRates {
-            offer: offer.into(),
-        };
-        let res: ExchangeRatesResponse = self.querier.custom_query(&request.into())?;
-        Ok(res.rates)
-    }
-
-    pub fn query_simulate_swap<T: Into<String>>(&self, offer: Coin, ask: T) -> StdResult<Coin> {
-        let request = SwapQuery::Simulate {
-            offer,
-            ask: ask.into(),
-        };
-        let res: SimulateSwapResponse = self.querier.custom_query(&request.into())?;
-        Ok(res.receive)
-    }
 }
