@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TerraMsg",
+  "description": "TerraMsg is an override of CosmosMsg::Custom to add support for Terra's custom message types",
+  "anyOf": [
+    {
+      "type": "object",
+      "required": [
+        "swap"
+      ],
+      "properties": {
+        "swap": {
+          "$ref": "#/definitions/SwapMsg"
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "Coin": {
+      "type": "object",
+      "required": [
+        "amount",
+        "denom"
+      ],
+      "properties": {
+        "amount": {
+          "$ref": "#/definitions/Uint128"
+        },
+        "denom": {
+          "type": "string"
+        }
+      }
+    },
+    "HumanAddr": {
+      "type": "string"
+    },
+    "SwapMsg": {
+      "description": "SwapMsg captures all possible messages we can return to terra's native swap module",
+      "anyOf": [
+        {
+          "type": "object",
+          "required": [
+            "Trade"
+          ],
+          "properties": {
+            "Trade": {
+              "type": "object",
+              "required": [
+                "ask_denom",
+                "offer_coin",
+                "trader_addr"
+              ],
+              "properties": {
+                "ask_denom": {
+                  "type": "string"
+                },
+                "offer_coin": {
+                  "$ref": "#/definitions/Coin"
+                },
+                "trader_addr": {
+                  "$ref": "#/definitions/HumanAddr"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "Uint128": {
+      "type": "string"
+    }
+  }
+}

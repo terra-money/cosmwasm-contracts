@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SeigniorageProceedsResponse",
+  "description": "SeigniorageProceedsResponse is data format returned from TreasuryRequest::SeigniorageProceeds query",
+  "type": "object",
+  "required": [
+    "size"
+  ],
+  "properties": {
+    "size": {
+      "$ref": "#/definitions/Uint128"
+    }
+  },
+  "definitions": {
+    "Uint128": {
+      "type": "string"
+    }
+  }
+}
