@@ -1,10 +1,10 @@
 use std::cmp::min;
 
 use cosmwasm_std::{
-    to_binary, unauthorized, Api, Binary, Coin, Env, Extern, HandleResponse, InitResponse, Querier,
-    StdResult, Storage, Uint128,
+    generic_err, to_binary, to_vec, unauthorized, Api, Binary, Coin, Env, Extern, HandleResponse,
+    InitResponse, Querier, QueryRequest, StdResult, Storage, Uint128,
 };
-use terra_bindings::{SwapMsg, TerraMsg, TerraQuerier};
+use terra_bindings::{SwapMsg, TerraMsg, TerraQuerier, TerraQuery};
 
 use crate::msg::{
     ConfigResponse, ExchangeRateResponse, HandleMsg, InitMsg, QueryMsg, SimulateResponse,
@@ -108,6 +108,7 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
         QueryMsg::Config {} => query_config(deps),
         QueryMsg::ExchangeRate {} => query_rate(deps),
         QueryMsg::Simulate { offer } => query_simulate(deps, offer),
+        QueryMsg::Reflect { query } => query_reflect(deps, query),
     }
 }
 
@@ -146,12 +147,25 @@ fn query_simulate<S: Storage, A: Api, Q: Querier>(
     to_binary(&resp)
 }
 
+fn query_reflect<S: Storage, A: Api, Q: Querier>(
+    deps: &Extern<S, A, Q>,
+    query: TerraQuery,
+) -> StdResult<Binary> {
+    let request: QueryRequest<TerraQuery> = query.into();
+    let raw_request = to_vec(&request)?;
+    let resp = deps
+        .querier
+        .raw_query(&raw_request)
+        .map_err(|e| generic_err(format!("System error: {}", e)))?;
+    resp
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::msg::ConfigResponse;
     use cosmwasm_std::testing::{mock_dependencies, mock_env};
-    use cosmwasm_std::{coins, from_binary};
+    use cosmwasm_std::{coin, coins, from_binary, CosmosMsg, StdError};
 
     #[test]
     fn proper_initialization() {
@@ -175,24 +189,63 @@ mod tests {
         assert_eq!("creator", value.owner.as_str());
     }
 
-    // #[test]
-    // fn increment() {
-    //     let mut deps = mock_dependencies(20, &coins(2, "token"));
-    //
-    //     let msg = InitMsg { count: 17 };
-    //     let env = mock_env(&deps.api, "creator", &coins(2, "token"));
-    //     let _res = init(&mut deps, env, msg).unwrap();
-    //
-    //     // beneficiary can release it
-    //     let env = mock_env(&deps.api, "anyone", &coins(2, "token"));
-    //     let msg = HandleMsg::Increment {};
-    //     let _res = handle(&mut deps, env, msg).unwrap();
-    //
-    //     // should increase counter by 1
-    //     let res = query(&deps, QueryMsg::GetCount {}).unwrap();
-    //     let value: CountResponse = from_binary(&res).unwrap();
-    //     assert_eq!(18, value.count);
-    // }
+    #[test]
+    fn buy() {
+        let mut deps = mock_dependencies(20, &coins(200, "ETH"));
+
+        let msg = InitMsg {
+            ask: "BTC".into(),
+            offer: "ETH".into(),
+        };
+        let env = mock_env(&deps.api, "creator", &coins(200, "ETH"));
+        let _res = init(&mut deps, env, msg).unwrap();
+
+        // we buy BTC with half the ETH
+        let env = mock_env(&deps.api, "creator", &[]);
+        let contract_addr = deps.api.human_address(&env.contract.address).unwrap();
+        let msg = HandleMsg::Buy {
+            limit: Some(Uint128(100)),
+        };
+        let res = handle(&mut deps, env, msg).unwrap();
+
+        // make sure we produce proper trade order
+        assert_eq!(1, res.messages.len());
+        if let CosmosMsg::Custom(TerraMsg::Swap(SwapMsg::Trade {
+            trader_addr,
+            offer_coin,
+            ask_denom,
+        })) = &res.messages[0]
+        {
+            assert_eq!(trader_addr, &contract_addr);
+            assert_eq!(offer_coin, &coin(100, "ETH"));
+            assert_eq!(ask_denom, "BTC");
+        } else {
+            panic!("Expected swap message, got: {:?}", &res.messages[0]);
+        }
+    }
+
+    #[test]
+    fn only_owner_can_buy() {
+        let mut deps = mock_dependencies(20, &coins(200, "ETH"));
+
+        let msg = InitMsg {
+            ask: "BTC".into(),
+            offer: "ETH".into(),
+        };
+        let env = mock_env(&deps.api, "creator", &coins(200, "ETH"));
+        let _res = init(&mut deps, env, msg).unwrap();
+
+        // we buy BTC with half the ETH
+        let env = mock_env(&deps.api, "someone else", &[]);
+        let msg = HandleMsg::Buy {
+            limit: Some(Uint128(100)),
+        };
+        match handle(&mut deps, env, msg).unwrap_err() {
+            StdError::Unauthorized { .. } => {}
+            e => panic!("Expected unauthorized error, got: {}", e),
+        }
+    }
+
     //
     // #[test]
     // fn reset() {

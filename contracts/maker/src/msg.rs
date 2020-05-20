@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::{Coin, Decimal, HumanAddr, Uint128};
 
+use terra_bindings::TerraQuery;
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InitMsg {
     pub offer: String,
@@ -27,6 +29,13 @@ pub enum QueryMsg {
     ExchangeRate {},
     /// Simulate will try to sell the given number of tokens (denom must be either ask or offer, we trade for the other)
     Simulate { offer: Coin },
+    /// Reflect is used for developer integration tests on the go layer.
+    /// This will cause the contract to make this query (which goes to the SDK), then return the result
+    /// to the user. This can be used to test the query handlers full-stack in Go code.
+    ///
+    /// There are many possible return values here, this will just return the raw bytes, the caller
+    /// is required to know the proper response type (defined in terra_bindings)
+    Reflect { query: TerraQuery },
 }
 
 /// Returns rate of ASK/OFFER
