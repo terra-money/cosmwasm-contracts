@@ -1,7 +1,7 @@
-use cosmwasm_std::{Decimal, QuerierResult};
+use cosmwasm_std::{generic_err, to_binary, Decimal, QuerierResult};
 use std::collections::{BTreeMap, HashMap};
 
-use terra_bindings::OracleQuery;
+use terra_bindings::{ExchangeRateResponse, ExchangeRatesResponse, OracleQuery, TobinTaxResponse};
 
 #[derive(Clone, Default)]
 pub struct OracleQuerier {
@@ -44,29 +44,43 @@ impl OracleQuerier {
 
     pub fn query(&self, request: &OracleQuery) -> QuerierResult {
         match request {
-            OracleQuery::TobinTax { .. } => panic!("not implemented"),
-            _ => panic!("not implemented"),
-            // SwapQuery::Simulate { offer, ask } => {
-            //     let pair = (offer.denom.clone(), ask.clone());
-            //     // proper error on not found, serialize result on found
-            //     let rate = self.rates.get(&pair);
-            //     let amount = match rate {
-            //         Some(r) => offer.amount * r.clone(),
-            //         None => {
-            //             return Ok(Err(generic_err(format!(
-            //                 "No rate listed for {} to {}",
-            //                 pair.0, pair.1
-            //             ))))
-            //         }
-            //     };
-            //     let swap_res = SimulateSwapResponse {
-            //         receive: Coin {
-            //             amount,
-            //             denom: ask.clone(),
-            //         },
-            //     };
-            //     Ok(to_binary(&swap_res))
-            // }
+            OracleQuery::ExchangeRate { offer, ask } => {
+                // proper error on not found, serialize result on found
+                let rate = self.rates.get(offer).and_then(|tree| tree.get(ask));
+                if rate.is_none() {
+                    return Ok(Err(generic_err(format!(
+                        "No rate listed for {} to {}",
+                        offer, ask
+                    ))));
+                }
+                let oracle_res = ExchangeRateResponse {
+                    ask: ask.to_string(),
+                    rate: *rate.unwrap(),
+                };
+                Ok(to_binary(&oracle_res))
+            }
+            OracleQuery::ExchangeRates { offer } => {
+                // proper error on not found, serialize result on found
+                let stored = self.rates.get(offer);
+                let rates = match stored {
+                    Some(tree) => tree
+                        .iter()
+                        .map(|(ask, r)| ExchangeRateResponse {
+                            ask: ask.to_string(),
+                            rate: *r,
+                        })
+                        .collect(),
+                    None => vec![],
+                };
+                let oracle_res = ExchangeRatesResponse { rates };
+                Ok(to_binary(&oracle_res))
+            }
+            OracleQuery::TobinTax { denom } => {
+                // proper error on not found, serialize result on found
+                let tax = *self.taxes.get(denom).unwrap_or(&Decimal::zero());
+                let oracle_res = TobinTaxResponse { tax };
+                Ok(to_binary(&oracle_res))
+            }
         }
     }
 }
