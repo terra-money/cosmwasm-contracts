@@ -138,8 +138,17 @@ fn query_simulate<S: Storage, A: Api, Q: Querier>(
     offer: Coin,
 ) -> StdResult<Binary> {
     let state = config_read(&deps.storage).load()?;
-    let receive =
-        TerraQuerier::new(&deps.querier).query_simulate_swap(offer.clone(), &state.ask)?;
+    let ask = if offer.denom == state.ask {
+        state.offer
+    } else if offer.denom == state.offer {
+        state.ask
+    } else {
+        return Err(generic_err(format!(
+            "Cannot simulate '{}' swap, neither contract's ask nor offer",
+            offer.denom
+        )));
+    };
+    let receive = TerraQuerier::new(&deps.querier).query_simulate_swap(offer.clone(), ask)?;
     let resp = SimulateResponse {
         sell: offer,
         buy: receive,
@@ -162,8 +171,10 @@ fn query_reflect<S: Storage, A: Api, Q: Querier>(
 mod tests {
     use super::*;
     use crate::msg::ConfigResponse;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env};
-    use cosmwasm_std::{coin, coins, from_binary, CosmosMsg, StdError};
+    use cosmwasm_std::testing::mock_env;
+    use cosmwasm_std::{coin, coins, from_binary, CosmosMsg, Decimal, HumanAddr, StdError};
+
+    use terra_mocks::mock_dependencies;
 
     #[test]
     fn proper_initialization() {
@@ -310,5 +321,83 @@ mod tests {
         } else {
             panic!("Expected swap message, got: {:?}", &res.messages[0]);
         }
+    }
+
+    #[test]
+    fn basic_queries() {
+        let mut deps = mock_dependencies(20, &[]);
+        // set the exchange rates between ETH and BTC (and back)
+        deps.querier.with_market(
+            &[
+                ("ETH", "BTC", Decimal::percent(15)),
+                ("BTC", "ETH", Decimal::percent(666)),
+            ],
+            &[],
+        );
+
+        let msg = InitMsg {
+            ask: "BTC".into(),
+            offer: "ETH".into(),
+        };
+        let env = mock_env(&deps.api, "creator", &[]);
+        let _res = init(&mut deps, env, msg).unwrap();
+
+        // check the config
+        let res = query(&mut deps, QueryMsg::Config {}).unwrap();
+        let cfg: ConfigResponse = from_binary(&res).unwrap();
+        assert_eq!(
+            cfg,
+            ConfigResponse {
+                owner: HumanAddr::from("creator"),
+                ask: "BTC".to_string(),
+                offer: "ETH".to_string(),
+            }
+        );
+
+        // check the expected rate
+        let res = query(&mut deps, QueryMsg::ExchangeRate {}).unwrap();
+        let cfg: ExchangeRateResponse = from_binary(&res).unwrap();
+        assert_eq!(
+            cfg,
+            ExchangeRateResponse {
+                ask: "BTC".to_string(),
+                offer: "ETH".to_string(),
+                rate: Decimal::percent(15),
+            }
+        );
+
+        // simulate a forward swap
+        let res = query(
+            &mut deps,
+            QueryMsg::Simulate {
+                offer: coin(100, "ETH"),
+            },
+        )
+        .unwrap();
+        let cfg: SimulateResponse = from_binary(&res).unwrap();
+        assert_eq!(
+            cfg,
+            SimulateResponse {
+                sell: coin(100, "ETH"),
+                buy: coin(15, "BTC"),
+            }
+        );
+
+        // simulate a reverse swap
+        let res = query(
+            &mut deps,
+            QueryMsg::Simulate {
+                offer: coin(10, "BTC"),
+            },
+        )
+        .unwrap();
+        let cfg: SimulateResponse = from_binary(&res).unwrap();
+        assert_eq!(
+            cfg,
+            SimulateResponse {
+                sell: coin(10, "BTC"),
+                buy: coin(66, "ETH"),
+            }
+        );
     }
 }

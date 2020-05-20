@@ -1,8 +1,25 @@
-use cosmwasm_std::testing::MockQuerier;
-use cosmwasm_std::{Coin, Decimal, FullDelegation, HumanAddr, Uint128, Validator};
+use cosmwasm_std::testing::{
+    mock_dependencies as std_dependencies, MockApi, MockQuerier, MockStorage,
+};
+use cosmwasm_std::{
+    from_slice, Coin, Decimal, Extern, FullDelegation, HumanAddr, Querier, QuerierResult,
+    QueryRequest, SystemError, Uint128, Validator,
+};
 
 use crate::{OracleQuerier, SwapQuerier, TreasuryQuerier};
+use terra_bindings::TerraQuery;
 
+/// mock_dependencies is a drop-in replacement for cosmwasm_std::testing::mock_dependencies
+/// this uses our CustomQuerier.
+pub fn mock_dependencies(
+    canonical_length: usize,
+    contract_balance: &[Coin],
+) -> Extern<MockStorage, MockApi, TerraMockQuerier> {
+    let base = std_dependencies(canonical_length, contract_balance);
+    base.change_querier(TerraMockQuerier::new)
+}
+
+#[derive(Clone, Default)]
 pub struct TerraMockQuerier {
     base: MockQuerier,
     swap: SwapQuerier,
@@ -10,10 +27,39 @@ pub struct TerraMockQuerier {
     treasury: TreasuryQuerier,
 }
 
+impl Querier for TerraMockQuerier {
+    fn raw_query(&self, bin_request: &[u8]) -> QuerierResult {
+        // MockQuerier doesn't support Custom, so we ignore it completely here
+        let request: QueryRequest<TerraQuery> = match from_slice(bin_request) {
+            Ok(v) => v,
+            Err(e) => {
+                return Err(SystemError::InvalidRequest {
+                    error: format!("Parsing query request: {}", e),
+                    request: bin_request.into(),
+                })
+            }
+        };
+        self.handle_query(&request)
+    }
+}
+
 impl TerraMockQuerier {
-    pub fn new(balances: &[(&HumanAddr, &[Coin])]) -> Self {
+    pub fn handle_query(&self, request: &QueryRequest<TerraQuery>) -> QuerierResult {
+        match &request {
+            QueryRequest::Custom(custom) => match custom {
+                TerraQuery::Swap(swap_query) => self.swap.query(swap_query),
+                TerraQuery::Oracle(oracle_query) => self.oracle.query(oracle_query),
+                TerraQuery::Treasury(treasury_query) => self.treasury.query(treasury_query),
+            },
+            _ => self.base.handle_query(request),
+        }
+    }
+}
+
+impl TerraMockQuerier {
+    pub fn new(base: MockQuerier) -> Self {
         TerraMockQuerier {
-            base: MockQuerier::new(balances),
+            base,
             swap: SwapQuerier::default(),
             oracle: OracleQuerier::default(),
             treasury: TreasuryQuerier::default(),
