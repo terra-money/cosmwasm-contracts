@@ -8,9 +8,9 @@ checksum = "b41b7ea54a0c9d92199de89e20e58d49f02f8e699814ef3fdf266f6f748d15c7"
 
 [[package]]
 name = "cosmwasm-std"
-version = "0.8.0-alpha2"
+version = "0.8.0-alpha3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c5d326cb2c18d14067f42333d214ff4bca6cff8679b406815e7cd1730f79c052"
+checksum = "04add776cc128c9fea37d7814d4c324e7e1e823e3c74b52e850cf51a39668580"
 dependencies = [
  "base64",
  "schemars",
