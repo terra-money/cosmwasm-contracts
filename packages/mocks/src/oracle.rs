@@ -11,6 +11,24 @@ pub struct OracleQuerier {
     taxes: HashMap<String, Decimal>,
 }
 
+pub(crate) fn rates_to_map(
+    rates: &[(&str, &str, Decimal)],
+) -> HashMap<String, BTreeMap<String, Decimal>> {
+    let mut rate_map: HashMap<String, BTreeMap<String, Decimal>> = HashMap::new();
+    for (offer, ask, rate) in rates.iter() {
+        let offer = offer.to_string();
+        let ask = ask.to_string();
+        if let Some(sub_map) = rate_map.get_mut(&offer) {
+            sub_map.insert(ask, *rate);
+        } else {
+            let mut sub_map = BTreeMap::new();
+            sub_map.insert(ask, *rate);
+            rate_map.insert(offer, sub_map);
+        }
+    }
+    rate_map
+}
+
 impl OracleQuerier {
     pub fn new(rates: &[(&str, &str, Decimal)], taxes: &[(&str, Decimal)]) -> Self {
         let mut tax_map = HashMap::new();
@@ -18,21 +36,8 @@ impl OracleQuerier {
             tax_map.insert(denom.to_string(), *tax);
         }
 
-        let mut rate_map: HashMap<String, BTreeMap<String, Decimal>> = HashMap::new();
-        for (offer, ask, rate) in rates.iter() {
-            let offer = offer.to_string();
-            let ask = ask.to_string();
-            if let Some(sub_map) = rate_map.get_mut(&offer) {
-                sub_map.insert(ask, *rate);
-            } else {
-                let mut sub_map = BTreeMap::new();
-                sub_map.insert(ask, *rate);
-                rate_map.insert(offer, sub_map);
-            }
-        }
-
         OracleQuerier {
-            rates: rate_map,
+            rates: rates_to_map(rates),
             taxes: tax_map,
         }
     }

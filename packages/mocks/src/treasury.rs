@@ -12,6 +12,18 @@ pub struct TreasuryQuerier {
     seigniorage_proceeds: Uint128,
 }
 
+impl Default for TreasuryQuerier {
+    fn default() -> Self {
+        TreasuryQuerier {
+            tax_rate: Decimal::zero(),
+            tax_proceeds: vec![],
+            tax_cap: HashMap::default(),
+            reward_rate: Decimal::zero(),
+            seigniorage_proceeds: Uint128::zero(),
+        }
+    }
+}
+
 impl TreasuryQuerier {
     pub fn new(
         tax_rate: Decimal,
