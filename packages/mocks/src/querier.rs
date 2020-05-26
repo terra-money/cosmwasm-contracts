@@ -7,7 +7,7 @@ use cosmwasm_std::{
 };
 
 use crate::{OracleQuerier, SwapQuerier, TreasuryQuerier};
-use terra_bindings::TerraQuery;
+use terra_bindings::TerraQueryWrapper;
 
 /// mock_dependencies is a drop-in replacement for cosmwasm_std::testing::mock_dependencies
 /// this uses our CustomQuerier.
@@ -30,7 +30,7 @@ pub struct TerraMockQuerier {
 impl Querier for TerraMockQuerier {
     fn raw_query(&self, bin_request: &[u8]) -> QuerierResult {
         // MockQuerier doesn't support Custom, so we ignore it completely here
-        let request: QueryRequest<TerraQuery> = match from_slice(bin_request) {
+        let request: QueryRequest<TerraQueryWrapper> = match from_slice(bin_request) {
             Ok(v) => v,
             Err(e) => {
                 return Err(SystemError::InvalidRequest {
@@ -44,13 +44,20 @@ impl Querier for TerraMockQuerier {
 }
 
 impl TerraMockQuerier {
-    pub fn handle_query(&self, request: &QueryRequest<TerraQuery>) -> QuerierResult {
+    pub fn handle_query(&self, request: &QueryRequest<TerraQueryWrapper>) -> QuerierResult {
         match &request {
-            QueryRequest::Custom(custom) => match custom {
-                TerraQuery::Swap(swap_query) => self.swap.query(swap_query),
-                TerraQuery::Oracle(oracle_query) => self.oracle.query(oracle_query),
-                TerraQuery::Treasury(treasury_query) => self.treasury.query(treasury_query),
-            },
+            QueryRequest::Custom(TerraQueryWrapper { route, query_data }) => {
+                let route_str = route.as_str();
+                if route_str == "market" {
+                    self.swap.query(query_data)
+                } else if route_str == "oracle" {
+                    self.oracle.query(query_data)
+                } else if route_str == "treasury" {
+                    self.treasury.query(query_data)
+                } else {
+                    panic!("DO NOT ENTER HERE")
+                }
+            }
             _ => self.base.handle_query(request),
         }
     }

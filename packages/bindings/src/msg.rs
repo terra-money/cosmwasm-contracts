@@ -3,33 +3,44 @@ use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::{Coin, CosmosMsg, HumanAddr};
 
-/// TerraMsg is an override of CosmosMsg::Custom to add support for Terra's custom message types
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+/// TerraMsgWrapper is an override of CosmosMsg::Custom to show this works and can be extended in the contract
+pub struct TerraMsgWrapper {
+    pub route: String,
+    pub msg_data: TerraMsg,
+}
+
+// this is a helper to be able to return these as CosmosMsg easier
+impl Into<CosmosMsg<TerraMsgWrapper>> for TerraMsgWrapper {
+    fn into(self) -> CosmosMsg<TerraMsgWrapper> {
+        CosmosMsg::Custom(self)
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum TerraMsg {
-    Swap(SwapMsg),
-}
-
-/// SwapMsg captures all possible messages we can return to terra's native swap module
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub enum SwapMsg {
-    Trade {
-        trader_addr: HumanAddr,
+    Swap {
+        trader: HumanAddr,
         offer_coin: Coin,
         ask_denom: String,
     },
 }
 
-// this is a helper to be able to return these as CosmosMsg easier
-impl Into<CosmosMsg<TerraMsg>> for TerraMsg {
-    fn into(self) -> CosmosMsg<TerraMsg> {
-        CosmosMsg::Custom(self)
+// create_swap_msg returns wrapped swap msg
+pub fn create_swap_msg(
+    trader: HumanAddr,
+    offer_coin: Coin,
+    ask_denom: String,
+) -> CosmosMsg<TerraMsgWrapper> {
+    return TerraMsgWrapper {
+        route: "market".to_string(),
+        msg_data: TerraMsg::Swap {
+            trader,
+            offer_coin,
+            ask_denom,
+        },
     }
-}
-
-// and another helper, so we can return SwapMsg::Trade{..}.into() as a CosmosMsg
-impl Into<CosmosMsg<TerraMsg>> for SwapMsg {
-    fn into(self) -> CosmosMsg<TerraMsg> {
-        CosmosMsg::Custom(TerraMsg::Swap(self))
-    }
+    .into();
 }

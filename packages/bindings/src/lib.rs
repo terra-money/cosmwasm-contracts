@@ -2,12 +2,12 @@ mod msg;
 mod querier;
 mod query;
 
-pub use msg::{SwapMsg, TerraMsg};
+pub use msg::{create_swap_msg, TerraMsg, TerraMsgWrapper};
 pub use querier::TerraQuerier;
 pub use query::{
-    ExchangeRateResponse, ExchangeRatesResponse, OracleQuery, RewardsWeightResponse,
-    SeigniorageProceedsResponse, SimulateSwapResponse, SwapQuery, TaxCapResponse,
-    TaxProceedsResponse, TaxRateResponse, TerraQuery, TobinTaxResponse, TreasuryQuery,
+    ExchangeRateResponse, ExchangeRatesResponse, RewardsWeightResponse,
+    SeigniorageProceedsResponse, SwapResponse, TaxCapResponse, TaxProceedsResponse,
+    TaxRateResponse, TerraQuery, TerraQueryWrapper, TobinTaxResponse,
 };
 
 // This export is added to all contracts that import this package, signifying that they require

@@ -60,7 +60,7 @@
           ],
           "properties": {
             "query": {
-              "$ref": "#/definitions/TerraQuery"
+              "$ref": "#/definitions/TerraQueryWrapper"
             }
           }
         }
@@ -83,9 +83,32 @@
         }
       }
     },
-    "OracleQuery": {
-      "description": "This contains all queries that can be made to the oracle module",
+    "TerraQuery": {
+      "description": "TerraQuery is defines avaliable query datas",
       "anyOf": [
+        {
+          "type": "object",
+          "required": [
+            "swap"
+          ],
+          "properties": {
+            "swap": {
+              "type": "object",
+              "required": [
+                "ask_denom",
+                "offer_coin"
+              ],
+              "properties": {
+                "ask_denom": {
+                  "type": "string"
+                },
+                "offer_coin": {
+                  "$ref": "#/definitions/Coin"
+                }
+              }
+            }
+          }
+        },
         {
           "type": "object",
           "required": [
@@ -146,78 +169,7 @@
               }
             }
           }
-        }
-      ]
-    },
-    "SwapQuery": {
-      "description": "This contains all queries that can be made to the swap module",
-      "anyOf": [
-        {
-          "type": "object",
-          "required": [
-            "simulate"
-          ],
-          "properties": {
-            "simulate": {
-              "type": "object",
-              "required": [
-                "ask",
-                "offer"
-              ],
-              "properties": {
-                "ask": {
-                  "type": "string"
-                },
-                "offer": {
-                  "$ref": "#/definitions/Coin"
-                }
-              }
-            }
-          }
-        }
-      ]
-    },
-    "TerraQuery": {
-      "description": "TerraQuery is an override of QueryRequest::Custom to access Terra-specific modules",
-      "anyOf": [
-        {
-          "type": "object",
-          "required": [
-            "swap"
-          ],
-          "properties": {
-            "swap": {
-              "$ref": "#/definitions/SwapQuery"
-            }
-          }
         },
-        {
-          "type": "object",
-          "required": [
-            "oracle"
-          ],
-          "properties": {
-            "oracle": {
-              "$ref": "#/definitions/OracleQuery"
-            }
-          }
-        },
-        {
-          "type": "object",
-          "required": [
-            "treasury"
-          ],
-          "properties": {
-            "treasury": {
-              "$ref": "#/definitions/TreasuryQuery"
-            }
-          }
-        }
-      ]
-    },
-    "TreasuryQuery": {
-      "description": "This contains all queries that can be made to the treasury module",
-      "anyOf": [
         {
           "type": "object",
           "required": [
@@ -282,6 +234,22 @@
           }
         }
       ]
+    },
+    "TerraQueryWrapper": {
+      "description": "TerraQueryWrapper is an override of QueryRequest::Custom to access Terra-specific modules",
+      "type": "object",
+      "required": [
+        "query_data",
+        "route"
+      ],
+      "properties": {
+        "query_data": {
+          "$ref": "#/definitions/TerraQuery"
+        },
+        "route": {
+          "type": "string"
+        }
+      }
     },
     "Uint128": {
       "type": "string"

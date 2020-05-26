@@ -1,7 +1,7 @@
 use cosmwasm_std::{generic_err, to_binary, Coin, Decimal, QuerierResult};
 use std::collections::{BTreeMap, HashMap};
 
-use terra_bindings::{SimulateSwapResponse, SwapQuery};
+use terra_bindings::{SwapResponse, TerraQuery};
 
 use crate::oracle::rates_to_map;
 
@@ -17,28 +17,35 @@ impl SwapQuerier {
         }
     }
 
-    pub fn query(&self, request: &SwapQuery) -> QuerierResult {
+    pub fn query(&self, request: &TerraQuery) -> QuerierResult {
         match request {
-            SwapQuery::Simulate { offer, ask } => {
+            TerraQuery::Swap {
+                offer_coin,
+                ask_denom,
+            } => {
                 // proper error on not found, serialize result on found
-                let rate = self.rates.get(&offer.denom).and_then(|tree| tree.get(ask));
+                let rate = self
+                    .rates
+                    .get(&offer_coin.denom)
+                    .and_then(|tree| tree.get(ask_denom));
                 let amount = match rate {
-                    Some(r) => offer.amount * *r,
+                    Some(r) => offer_coin.amount * *r,
                     None => {
                         return Ok(Err(generic_err(format!(
                             "No rate listed for {} to {}",
-                            offer.denom, ask,
+                            offer_coin.denom, ask_denom,
                         ))))
                     }
                 };
-                let swap_res = SimulateSwapResponse {
+                let swap_res = SwapResponse {
                     receive: Coin {
                         amount,
-                        denom: ask.clone(),
+                        denom: ask_denom.clone(),
                     },
                 };
                 Ok(to_binary(&swap_res))
             }
+            _ => panic!("DO NOT ENTER HERE"),
         }
     }
 }
@@ -56,12 +63,12 @@ mod test {
         let querier = SwapQuerier::new(&[("ETH", "BTC", eth2btc), ("BTC", "ETH", btc2eth)]);
 
         // test forward swap
-        let forward_query = SwapQuery::Simulate {
-            offer: coin(100, "ETH"),
-            ask: "BTC".to_string(),
+        let forward_query = TerraQuery::Swap {
+            offer_coin: coin(100, "ETH"),
+            ask_denom: "BTC".to_string(),
         };
         let res = querier.query(&forward_query).unwrap().unwrap();
-        let sim: SimulateSwapResponse = from_binary(&res).unwrap();
+        let sim: SwapResponse = from_binary(&res).unwrap();
         assert_eq!(sim.receive, coin(15, "BTC"));
     }
 
@@ -73,12 +80,12 @@ mod test {
         let querier = SwapQuerier::new(&[("ETH", "BTC", eth2btc), ("BTC", "ETH", btc2eth)]);
 
         // test forward swap
-        let forward_query = SwapQuery::Simulate {
-            offer: coin(50, "BTC"),
-            ask: "ETH".to_string(),
+        let forward_query = TerraQuery::Swap {
+            offer_coin: coin(50, "BTC"),
+            ask_denom: "ETH".to_string(),
         };
         let res = querier.query(&forward_query).unwrap().unwrap();
-        let sim: SimulateSwapResponse = from_binary(&res).unwrap();
+        let sim: SwapResponse = from_binary(&res).unwrap();
         assert_eq!(sim.receive, coin(333, "ETH"));
     }
 
@@ -90,9 +97,9 @@ mod test {
         let querier = SwapQuerier::new(&[("ETH", "BTC", eth2btc), ("BTC", "ETH", btc2eth)]);
 
         // test forward swap
-        let forward_query = SwapQuery::Simulate {
-            offer: coin(100, "ETH"),
-            ask: "ATOM".to_string(),
+        let forward_query = TerraQuery::Swap {
+            offer_coin: coin(100, "ETH"),
+            ask_denom: "ATOM".to_string(),
         };
         let res = querier.query(&forward_query).unwrap();
         match res.unwrap_err() {

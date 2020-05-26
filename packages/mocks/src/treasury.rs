@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 use terra_bindings::{
     RewardsWeightResponse, SeigniorageProceedsResponse, TaxCapResponse, TaxProceedsResponse,
-    TaxRateResponse, TreasuryQuery,
+    TaxRateResponse, TerraQuery,
 };
 
 #[derive(Clone)]
@@ -48,35 +48,36 @@ impl TreasuryQuerier {
         }
     }
 
-    pub fn query(&self, request: &TreasuryQuery) -> QuerierResult {
+    pub fn query(&self, request: &TerraQuery) -> QuerierResult {
         match request {
-            TreasuryQuery::TaxRate {} => {
+            TerraQuery::TaxRate {} => {
                 let res = TaxRateResponse { tax: self.tax_rate };
                 Ok(to_binary(&res))
             }
-            TreasuryQuery::TaxCap { denom } => {
+            TerraQuery::TaxCap { denom } => {
                 let cap = self.tax_cap.get(denom).copied().unwrap_or_default();
                 let res = TaxCapResponse { cap };
                 Ok(to_binary(&res))
             }
-            TreasuryQuery::TaxProceeds {} => {
+            TerraQuery::TaxProceeds {} => {
                 let res = TaxProceedsResponse {
                     proceeds: self.tax_proceeds.clone(),
                 };
                 Ok(to_binary(&res))
             }
-            TreasuryQuery::RewardsWeight {} => {
+            TerraQuery::RewardsWeight {} => {
                 let res = RewardsWeightResponse {
                     weight: self.reward_rate,
                 };
                 Ok(to_binary(&res))
             }
-            TreasuryQuery::SeigniorageProceeds {} => {
+            TerraQuery::SeigniorageProceeds {} => {
                 let res = SeigniorageProceedsResponse {
                     size: self.seigniorage_proceeds,
                 };
                 Ok(to_binary(&res))
             }
+            _ => panic!("DO NOT ENTER HERE"),
         }
     }
 }
@@ -98,29 +99,29 @@ mod test {
         let querier = TreasuryQuerier::new(tax_rate, &tax_proceeds, tax_caps, reward, seignorage);
 
         // test all treasury functions
-        let tax_rate_query = TreasuryQuery::TaxRate {};
+        let tax_rate_query = TerraQuery::TaxRate {};
         let res = querier.query(&tax_rate_query).unwrap().unwrap();
         let rate: TaxRateResponse = from_binary(&res).unwrap();
         assert_eq!(rate.tax, tax_rate);
 
-        let tax_cap_query = TreasuryQuery::TaxCap {
+        let tax_cap_query = TerraQuery::TaxCap {
             denom: "ETH".to_string(),
         };
         let res = querier.query(&tax_cap_query).unwrap().unwrap();
         let cap: TaxCapResponse = from_binary(&res).unwrap();
         assert_eq!(cap.cap, Uint128(1000));
 
-        let tax_proceeds_query = TreasuryQuery::TaxProceeds {};
+        let tax_proceeds_query = TerraQuery::TaxProceeds {};
         let res = querier.query(&tax_proceeds_query).unwrap().unwrap();
         let proceeds: TaxProceedsResponse = from_binary(&res).unwrap();
         assert_eq!(proceeds.proceeds, tax_proceeds);
 
-        let rewards_query = TreasuryQuery::RewardsWeight {};
+        let rewards_query = TerraQuery::RewardsWeight {};
         let res = querier.query(&rewards_query).unwrap().unwrap();
         let rewards: RewardsWeightResponse = from_binary(&res).unwrap();
         assert_eq!(rewards.weight, reward);
 
-        let seigniorage_query = TreasuryQuery::SeigniorageProceeds {};
+        let seigniorage_query = TerraQuery::SeigniorageProceeds {};
         let res = querier.query(&seigniorage_query).unwrap().unwrap();
         let proceeds: SeigniorageProceedsResponse = from_binary(&res).unwrap();
         assert_eq!(proceeds.size, Uint128(seignorage));

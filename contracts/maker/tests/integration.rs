@@ -25,7 +25,7 @@ use cosmwasm_vm::testing::{
 };
 use cosmwasm_vm::{Api, Instance};
 
-use terra_bindings::{SwapMsg, TerraMsg};
+use terra_bindings::{TerraMsg, TerraMsgWrapper};
 
 use maker::msg::{ConfigResponse, HandleMsg, InitMsg, QueryMsg};
 
@@ -79,7 +79,7 @@ fn buy_limit() {
         offer: "ETH".into(),
     };
     let env = mock_env(&deps.api, "creator", &coins(200, "ETH"));
-    let _res: InitResponse<TerraMsg> = init(&mut deps, env, msg).unwrap();
+    let _res: InitResponse<TerraMsgWrapper> = init(&mut deps, env, msg).unwrap();
 
     // we buy BTC with half the ETH
     let env = mock_env(&deps.api, "creator", &[]);
@@ -87,19 +87,25 @@ fn buy_limit() {
     let msg = HandleMsg::Buy {
         limit: Some(Uint128(100)),
     };
-    let res: HandleResponse<TerraMsg> = handle(&mut deps, env, msg).unwrap();
+    let res: HandleResponse<TerraMsgWrapper> = handle(&mut deps, env, msg).unwrap();
 
     // make sure we produce proper trade order
     assert_eq!(1, res.messages.len());
-    if let CosmosMsg::Custom(TerraMsg::Swap(SwapMsg::Trade {
-        trader_addr,
-        offer_coin,
-        ask_denom,
-    })) = &res.messages[0]
-    {
-        assert_eq!(trader_addr, &contract_addr);
-        assert_eq!(offer_coin, &coin(100, "ETH"));
-        assert_eq!(ask_denom, "BTC");
+    if let CosmosMsg::Custom(TerraMsgWrapper { route, msg_data }) = &res.messages[0] {
+        assert_eq!(route, "market");
+
+        if let TerraMsg::Swap {
+            trader,
+            offer_coin,
+            ask_denom,
+        } = &msg_data
+        {
+            assert_eq!(trader, &contract_addr);
+            assert_eq!(offer_coin, &coin(100, "ETH"));
+            assert_eq!(ask_denom, "BTC");
+        } else {
+            panic!("Expected swap message, got: {:?}", &msg_data);
+        }
     } else {
         panic!("Expected swap message, got: {:?}", &res.messages[0]);
     }

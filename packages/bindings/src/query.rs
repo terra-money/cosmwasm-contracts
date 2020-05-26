@@ -3,62 +3,40 @@ use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::{Coin, Decimal, QueryRequest, Uint128};
 
-/// TerraQuery is an override of QueryRequest::Custom to access Terra-specific modules
+/// TerraQueryWrapper is an override of QueryRequest::Custom to access Terra-specific modules
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct TerraQueryWrapper {
+    pub route: String,
+    pub query_data: TerraQuery,
+}
+
+/// TerraQuery is defines avaliable query datas
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum TerraQuery {
-    Swap(SwapQuery),
-    Oracle(OracleQuery),
-    Treasury(TreasuryQuery),
+    Swap { offer_coin: Coin, ask_denom: String },
+    ExchangeRate { offer: String, ask: String },
+    ExchangeRates { offer: String },
+    TobinTax { denom: String },
+    TaxRate {},
+    TaxProceeds {},
+    TaxCap { denom: String },
+    RewardsWeight {},
+    SeigniorageProceeds {},
 }
 
 // This is a simpler way to making queries
-impl Into<QueryRequest<TerraQuery>> for TerraQuery {
-    fn into(self) -> QueryRequest<TerraQuery> {
+impl Into<QueryRequest<TerraQueryWrapper>> for TerraQueryWrapper {
+    fn into(self) -> QueryRequest<TerraQueryWrapper> {
         QueryRequest::Custom(self)
     }
 }
 
-/// This contains all queries that can be made to the swap module
+/// SwapResponse is data format returned from SwapRequest::Simulate query
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum SwapQuery {
-    // Delegations will return all delegations by the delegator,
-    // or just those to the given validator (if set)
-    Simulate { offer: Coin, ask: String },
-}
-
-// This is a simpler way to making queries
-impl Into<QueryRequest<TerraQuery>> for SwapQuery {
-    fn into(self) -> QueryRequest<TerraQuery> {
-        QueryRequest::Custom(TerraQuery::Swap(self))
-    }
-}
-
-/// SimulateSwapResponse is data format returned from SwapRequest::Simulate query
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct SimulateSwapResponse {
+pub struct SwapResponse {
     pub receive: Coin,
-}
-
-/// This contains all queries that can be made to the oracle module
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum OracleQuery {
-    // ExchangeRate will return the rate between just this pair.
-    ExchangeRate { offer: String, ask: String },
-    // ExchangeRates will return the exchange rate between offer denom and all supported asks
-    ExchangeRates { offer: String },
-    // Return the tobin tax charged on exchanges with this token
-    // (TODO: define if this applies to the offer or the ask?)
-    TobinTax { denom: String },
-}
-
-// This is a simpler way to making queries
-impl Into<QueryRequest<TerraQuery>> for OracleQuery {
-    fn into(self) -> QueryRequest<TerraQuery> {
-        QueryRequest::Custom(TerraQuery::Oracle(self))
-    }
 }
 
 /// ExchangeRateResponse is data format returned from OracleRequest::ExchangeRate query
@@ -78,31 +56,6 @@ pub struct ExchangeRatesResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct TobinTaxResponse {
     pub tax: Decimal,
-}
-
-/// This contains all queries that can be made to the treasury module
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum TreasuryQuery {
-    TaxRate {},
-    TaxProceeds {},
-    // TODO: review
-    TaxCap { denom: String },
-    RewardsWeight {},
-    SeigniorageProceeds {},
-}
-
-impl Into<TerraQuery> for TreasuryQuery {
-    fn into(self) -> TerraQuery {
-        TerraQuery::Treasury(self)
-    }
-}
-
-// This is a simpler way to making queries
-impl Into<QueryRequest<TerraQuery>> for TreasuryQuery {
-    fn into(self) -> QueryRequest<TerraQuery> {
-        QueryRequest::Custom(TerraQuery::Treasury(self))
-    }
 }
 
 /// TaxRateResponse is data format returned from TreasuryRequest::TaxRate query

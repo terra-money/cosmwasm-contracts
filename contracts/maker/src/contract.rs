@@ -4,7 +4,7 @@ use cosmwasm_std::{
     generic_err, to_binary, to_vec, unauthorized, Api, Binary, Coin, Env, Extern, HandleResponse,
     InitResponse, Querier, QueryRequest, StdResult, Storage, Uint128,
 };
-use terra_bindings::{SwapMsg, TerraMsg, TerraQuerier, TerraQuery};
+use terra_bindings::{create_swap_msg, TerraMsgWrapper, TerraQuerier, TerraQueryWrapper};
 
 use crate::msg::{
     ConfigResponse, ExchangeRateResponse, HandleMsg, InitMsg, QueryMsg, SimulateResponse,
@@ -31,7 +31,7 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
     msg: HandleMsg,
-) -> StdResult<HandleResponse<TerraMsg>> {
+) -> StdResult<HandleResponse<TerraMsgWrapper>> {
     match msg {
         HandleMsg::Buy { limit } => buy(deps, env, limit),
         HandleMsg::Sell { limit } => sell(deps, env, limit),
@@ -42,7 +42,7 @@ pub fn buy<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
     limit: Option<Uint128>,
-) -> StdResult<HandleResponse<TerraMsg>> {
+) -> StdResult<HandleResponse<TerraMsgWrapper>> {
     let state = config_read(&deps.storage).load()?;
     if env.message.sender != state.owner {
         return Err(unauthorized());
@@ -58,12 +58,7 @@ pub fn buy<S: Storage, A: Api, Q: Querier>(
     }
 
     Ok(HandleResponse {
-        messages: vec![SwapMsg::Trade {
-            trader_addr: contract_addr,
-            offer_coin: offer,
-            ask_denom: state.ask,
-        }
-        .into()],
+        messages: vec![create_swap_msg(contract_addr, offer, state.ask)],
         log: vec![],
         data: None,
     })
@@ -73,7 +68,7 @@ pub fn sell<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
     limit: Option<Uint128>,
-) -> StdResult<HandleResponse<TerraMsg>> {
+) -> StdResult<HandleResponse<TerraMsgWrapper>> {
     let state = config_read(&deps.storage).load()?;
     if env.message.sender != state.owner {
         return Err(unauthorized());
@@ -89,12 +84,7 @@ pub fn sell<S: Storage, A: Api, Q: Querier>(
     }
 
     Ok(HandleResponse {
-        messages: vec![SwapMsg::Trade {
-            trader_addr: contract_addr,
-            offer_coin: sell,
-            ask_denom: state.offer,
-        }
-        .into()],
+        messages: vec![create_swap_msg(contract_addr, sell, state.offer)],
         log: vec![],
         data: None,
     })
@@ -107,7 +97,7 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
     match msg {
         QueryMsg::Config {} => query_config(deps),
         QueryMsg::ExchangeRate {} => query_rate(deps),
-        QueryMsg::Simulate { offer } => query_simulate(deps, offer),
+        QueryMsg::Simulate { offer } => query_swap(deps, offer),
         QueryMsg::Reflect { query } => query_reflect(deps, query),
     }
 }
@@ -133,7 +123,7 @@ fn query_rate<S: Storage, A: Api, Q: Querier>(deps: &Extern<S, A, Q>) -> StdResu
     to_binary(&resp)
 }
 
-fn query_simulate<S: Storage, A: Api, Q: Querier>(
+fn query_swap<S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>,
     offer: Coin,
 ) -> StdResult<Binary> {
@@ -148,7 +138,7 @@ fn query_simulate<S: Storage, A: Api, Q: Querier>(
             offer.denom
         )));
     };
-    let receive = TerraQuerier::new(&deps.querier).query_simulate_swap(offer.clone(), ask)?;
+    let receive = TerraQuerier::new(&deps.querier).query_swap(offer.clone(), ask)?;
     let resp = SimulateResponse {
         sell: offer,
         buy: receive,
@@ -158,9 +148,9 @@ fn query_simulate<S: Storage, A: Api, Q: Querier>(
 
 fn query_reflect<S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>,
-    query: TerraQuery,
+    query: TerraQueryWrapper,
 ) -> StdResult<Binary> {
-    let request: QueryRequest<TerraQuery> = query.into();
+    let request: QueryRequest<TerraQueryWrapper> = query.into();
     let raw_request = to_vec(&request)?;
     deps.querier
         .raw_query(&raw_request)
@@ -175,9 +165,9 @@ mod tests {
     use cosmwasm_std::{coin, coins, from_binary, CosmosMsg, Decimal, HumanAddr, StdError};
 
     use terra_bindings::{
-        ExchangeRateResponse as TerraExchangeRateResponse, ExchangeRatesResponse, OracleQuery,
+        ExchangeRateResponse as TerraExchangeRateResponse, ExchangeRatesResponse,
         RewardsWeightResponse, SeigniorageProceedsResponse, TaxCapResponse, TaxProceedsResponse,
-        TaxRateResponse, TreasuryQuery,
+        TaxRateResponse, TerraMsg, TerraQuery,
     };
     use terra_mocks::mock_dependencies;
 
@@ -224,15 +214,21 @@ mod tests {
 
         // make sure we produce proper trade order
         assert_eq!(1, res.messages.len());
-        if let CosmosMsg::Custom(TerraMsg::Swap(SwapMsg::Trade {
-            trader_addr,
-            offer_coin,
-            ask_denom,
-        })) = &res.messages[0]
-        {
-            assert_eq!(trader_addr, &contract_addr);
-            assert_eq!(offer_coin, &coin(100, "ETH"));
-            assert_eq!(ask_denom, "BTC");
+        if let CosmosMsg::Custom(TerraMsgWrapper { route, msg_data }) = &res.messages[0] {
+            assert_eq!(route, "market");
+
+            if let TerraMsg::Swap {
+                trader,
+                offer_coin,
+                ask_denom,
+            } = &msg_data
+            {
+                assert_eq!(trader, &contract_addr);
+                assert_eq!(offer_coin, &coin(100, "ETH"));
+                assert_eq!(ask_denom, "BTC");
+            } else {
+                panic!("Expected swap message, got: {:?}", &msg_data);
+            }
         } else {
             panic!("Expected swap message, got: {:?}", &res.messages[0]);
         }
@@ -279,15 +275,21 @@ mod tests {
 
         // make sure we produce proper trade order
         assert_eq!(1, res.messages.len());
-        if let CosmosMsg::Custom(TerraMsg::Swap(SwapMsg::Trade {
-            trader_addr,
-            offer_coin,
-            ask_denom,
-        })) = &res.messages[0]
-        {
-            assert_eq!(trader_addr, &contract_addr);
-            assert_eq!(offer_coin, &coin(120, "BTC"));
-            assert_eq!(ask_denom, "ETH");
+        if let CosmosMsg::Custom(TerraMsgWrapper { route, msg_data }) = &res.messages[0] {
+            assert_eq!(route, "market");
+
+            if let TerraMsg::Swap {
+                trader,
+                offer_coin,
+                ask_denom,
+            } = &msg_data
+            {
+                assert_eq!(trader, &contract_addr);
+                assert_eq!(offer_coin, &coin(120, "BTC"));
+                assert_eq!(ask_denom, "ETH");
+            } else {
+                panic!("Expected swap message, got: {:?}", &msg_data);
+            }
         } else {
             panic!("Expected swap message, got: {:?}", &res.messages[0]);
         }
@@ -314,15 +316,21 @@ mod tests {
 
         // make sure we produce proper trade order
         assert_eq!(1, res.messages.len());
-        if let CosmosMsg::Custom(TerraMsg::Swap(SwapMsg::Trade {
-            trader_addr,
-            offer_coin,
-            ask_denom,
-        })) = &res.messages[0]
-        {
-            assert_eq!(trader_addr, &contract_addr);
-            assert_eq!(offer_coin, &coin(133, "BTC"));
-            assert_eq!(ask_denom, "ETH");
+        if let CosmosMsg::Custom(TerraMsgWrapper { route, msg_data }) = &res.messages[0] {
+            assert_eq!(route, "market");
+
+            if let TerraMsg::Swap {
+                trader,
+                offer_coin,
+                ask_denom,
+            } = &msg_data
+            {
+                assert_eq!(trader, &contract_addr);
+                assert_eq!(offer_coin, &coin(133, "BTC"));
+                assert_eq!(ask_denom, "ETH");
+            } else {
+                panic!("Expected swap message, got: {:?}", &msg_data);
+            }
         } else {
             panic!("Expected swap message, got: {:?}", &res.messages[0]);
         }
@@ -427,9 +435,12 @@ mod tests {
         let _res = init(&mut deps, env, msg).unwrap();
 
         // check the general exchange query
-        let rates_query = TerraQuery::Oracle(OracleQuery::ExchangeRates {
-            offer: "ETH".to_string(),
-        });
+        let rates_query = TerraQueryWrapper {
+            route: "oracle".to_string(),
+            query_data: TerraQuery::ExchangeRates {
+                offer: "ETH".to_string(),
+            },
+        };
         let res = query(&mut deps, QueryMsg::Reflect { query: rates_query }).unwrap();
         let rates: ExchangeRatesResponse = from_binary(&res).unwrap();
         assert_eq!(2, rates.rates.len());
@@ -471,38 +482,52 @@ mod tests {
 
         // test all treasury functions
         let tax_rate_query = QueryMsg::Reflect {
-            query: TreasuryQuery::TaxRate {}.into(),
+            query: TerraQueryWrapper {
+                route: "treasury".to_string(),
+                query_data: TerraQuery::TaxRate {},
+            },
         };
         let res = query(&mut deps, tax_rate_query).unwrap();
         let rate: TaxRateResponse = from_binary(&res).unwrap();
         assert_eq!(rate.tax, tax_rate);
 
         let tax_cap_query = QueryMsg::Reflect {
-            query: TreasuryQuery::TaxCap {
-                denom: "ETH".to_string(),
-            }
-            .into(),
+            query: TerraQueryWrapper {
+                route: "treasury".to_string(),
+                query_data: TerraQuery::TaxCap {
+                    denom: "ETH".to_string(),
+                },
+            },
         };
         let res = query(&mut deps, tax_cap_query).unwrap();
         let cap: TaxCapResponse = from_binary(&res).unwrap();
         assert_eq!(cap.cap, Uint128(1000));
 
         let tax_proceeds_query = QueryMsg::Reflect {
-            query: TreasuryQuery::TaxProceeds {}.into(),
+            query: TerraQueryWrapper {
+                route: "treasury".to_string(),
+                query_data: TerraQuery::TaxProceeds {},
+            },
         };
         let res = query(&mut deps, tax_proceeds_query).unwrap();
         let proceeds: TaxProceedsResponse = from_binary(&res).unwrap();
         assert_eq!(proceeds.proceeds, tax_proceeds);
 
         let rewards_query = QueryMsg::Reflect {
-            query: TreasuryQuery::RewardsWeight {}.into(),
+            query: TerraQueryWrapper {
+                route: "treasury".to_string(),
+                query_data: TerraQuery::RewardsWeight {},
+            },
         };
         let res = query(&mut deps, rewards_query).unwrap();
         let rewards: RewardsWeightResponse = from_binary(&res).unwrap();
         assert_eq!(rewards.weight, reward);
 
         let seigniorage_query = QueryMsg::Reflect {
-            query: TreasuryQuery::SeigniorageProceeds {}.into(),
+            query: TerraQueryWrapper {
+                route: "treasury".to_string(),
+                query_data: TerraQuery::SeigniorageProceeds {},
+            },
         };
         let res = query(&mut deps, seigniorage_query).unwrap();
         let proceeds: SeigniorageProceedsResponse = from_binary(&res).unwrap();

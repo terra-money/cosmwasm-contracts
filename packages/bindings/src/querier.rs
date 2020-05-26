@@ -1,9 +1,9 @@
 use cosmwasm_std::{Coin, Decimal, Querier, StdResult, Uint128};
 
 use crate::query::{
-    ExchangeRateResponse, ExchangeRatesResponse, OracleQuery, RewardsWeightResponse,
-    SeigniorageProceedsResponse, SimulateSwapResponse, SwapQuery, TaxCapResponse,
-    TaxProceedsResponse, TaxRateResponse, TobinTaxResponse, TreasuryQuery,
+    ExchangeRateResponse, ExchangeRatesResponse, RewardsWeightResponse,
+    SeigniorageProceedsResponse, SwapResponse, TaxCapResponse, TaxProceedsResponse,
+    TaxRateResponse, TerraQuery, TerraQueryWrapper, TobinTaxResponse,
 };
 
 /// This is a helper wrapper to easily use our custom queries
@@ -17,9 +17,12 @@ impl<'a, Q: Querier> TerraQuerier<'a, Q> {
     }
 
     pub fn query_exchange_rate<T: Into<String>>(&self, offer: T, ask: T) -> StdResult<Decimal> {
-        let request = OracleQuery::ExchangeRate {
-            offer: offer.into(),
-            ask: ask.into(),
+        let request = TerraQueryWrapper {
+            route: "oracle".to_string(),
+            query_data: TerraQuery::ExchangeRate {
+                offer: offer.into(),
+                ask: ask.into(),
+            },
         };
         let res: ExchangeRateResponse = self.querier.custom_query(&request.into())?;
         Ok(res.rate)
@@ -29,57 +32,81 @@ impl<'a, Q: Querier> TerraQuerier<'a, Q> {
         &self,
         offer: T,
     ) -> StdResult<Vec<ExchangeRateResponse>> {
-        let request = OracleQuery::ExchangeRates {
-            offer: offer.into(),
+        let request = TerraQueryWrapper {
+            route: "oracle".to_string(),
+            query_data: TerraQuery::ExchangeRates {
+                offer: offer.into(),
+            },
         };
         let res: ExchangeRatesResponse = self.querier.custom_query(&request.into())?;
         Ok(res.rates)
     }
 
     pub fn query_reward_weight(&self) -> StdResult<Decimal> {
-        let request = TreasuryQuery::RewardsWeight {};
+        let request = TerraQueryWrapper {
+            route: "treasury".to_string(),
+            query_data: TerraQuery::RewardsWeight {},
+        };
         let res: RewardsWeightResponse = self.querier.custom_query(&request.into())?;
         Ok(res.weight)
     }
 
     pub fn query_seigniorage_proceeds(&self) -> StdResult<Uint128> {
-        let request = TreasuryQuery::SeigniorageProceeds {};
+        let request = TerraQueryWrapper {
+            route: "treasury".to_string(),
+            query_data: TerraQuery::SeigniorageProceeds {},
+        };
         let res: SeigniorageProceedsResponse = self.querier.custom_query(&request.into())?;
         Ok(res.size)
     }
 
-    pub fn query_simulate_swap<T: Into<String>>(&self, offer: Coin, ask: T) -> StdResult<Coin> {
-        let request = SwapQuery::Simulate {
-            offer,
-            ask: ask.into(),
+    pub fn query_swap<T: Into<String>>(&self, offer_coin: Coin, ask_denom: T) -> StdResult<Coin> {
+        let request = TerraQueryWrapper {
+            route: "market".to_string(),
+            query_data: TerraQuery::Swap {
+                offer_coin,
+                ask_denom: ask_denom.into(),
+            },
         };
-        let res: SimulateSwapResponse = self.querier.custom_query(&request.into())?;
+        let res: SwapResponse = self.querier.custom_query(&request.into())?;
         Ok(res.receive)
     }
 
     pub fn query_tax_cap<T: Into<String>>(&self, denom: T) -> StdResult<Uint128> {
-        let request = TreasuryQuery::TaxCap {
-            denom: denom.into(),
+        let request = TerraQueryWrapper {
+            route: "treasury".to_string(),
+            query_data: TerraQuery::TaxCap {
+                denom: denom.into(),
+            },
         };
         let res: TaxCapResponse = self.querier.custom_query(&request.into())?;
         Ok(res.cap)
     }
 
     pub fn query_tax_proceeds(&self) -> StdResult<Vec<Coin>> {
-        let request = TreasuryQuery::TaxProceeds {};
+        let request = TerraQueryWrapper {
+            route: "treasury".to_string(),
+            query_data: TerraQuery::TaxProceeds {},
+        };
         let res: TaxProceedsResponse = self.querier.custom_query(&request.into())?;
         Ok(res.proceeds)
     }
 
     pub fn query_tax_rate(&self) -> StdResult<Decimal> {
-        let request = TreasuryQuery::TaxRate {};
+        let request = TerraQueryWrapper {
+            route: "treasury".to_string(),
+            query_data: TerraQuery::TaxRate {},
+        };
         let res: TaxRateResponse = self.querier.custom_query(&request.into())?;
         Ok(res.tax)
     }
 
     pub fn query_tobin_tax<T: Into<String>>(&self, denom: T) -> StdResult<Decimal> {
-        let request = OracleQuery::TobinTax {
-            denom: denom.into(),
+        let request = TerraQueryWrapper {
+            route: "oracle".to_string(),
+            query_data: TerraQuery::TobinTax {
+                denom: denom.into(),
+            },
         };
         let res: TobinTaxResponse = self.querier.custom_query(&request.into())?;
         Ok(res.tax)

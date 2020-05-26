@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::{Coin, Decimal, HumanAddr, Uint128};
 
-use terra_bindings::TerraQuery;
+use terra_bindings::TerraQueryWrapper;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InitMsg {
@@ -35,7 +35,7 @@ pub enum QueryMsg {
     ///
     /// There are many possible return values here, this will just return the raw bytes, the caller
     /// is required to know the proper response type (defined in terra_bindings)
-    Reflect { query: TerraQuery },
+    Reflect { query: TerraQueryWrapper },
 }
 
 /// Returns rate of ASK/OFFER

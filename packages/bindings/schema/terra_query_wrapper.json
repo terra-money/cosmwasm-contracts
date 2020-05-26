@@ -1,0 +1,190 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TerraQueryWrapper",
+  "description": "TerraQueryWrapper is an override of QueryRequest::Custom to access Terra-specific modules",
+  "type": "object",
+  "required": [
+    "query_data",
+    "route"
+  ],
+  "properties": {
+    "query_data": {
+      "$ref": "#/definitions/TerraQuery"
+    },
+    "route": {
+      "type": "string"
+    }
+  },
+  "definitions": {
+    "Coin": {
+      "type": "object",
+      "required": [
+        "amount",
+        "denom"
+      ],
+      "properties": {
+        "amount": {
+          "$ref": "#/definitions/Uint128"
+        },
+        "denom": {
+          "type": "string"
+        }
+      }
+    },
+    "TerraQuery": {
+      "description": "TerraQuery is defines avaliable query datas",
+      "anyOf": [
+        {
+          "type": "object",
+          "required": [
+            "swap"
+          ],
+          "properties": {
+            "swap": {
+              "type": "object",
+              "required": [
+                "ask",
+                "offer"
+              ],
+              "properties": {
+                "ask": {
+                  "type": "string"
+                },
+                "offer": {
+                  "$ref": "#/definitions/Coin"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "exchange_rate"
+          ],
+          "properties": {
+            "exchange_rate": {
+              "type": "object",
+              "required": [
+                "ask",
+                "offer"
+              ],
+              "properties": {
+                "ask": {
+                  "type": "string"
+                },
+                "offer": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "exchange_rates"
+          ],
+          "properties": {
+            "exchange_rates": {
+              "type": "object",
+              "required": [
+                "offer"
+              ],
+              "properties": {
+                "offer": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "tobin_tax"
+          ],
+          "properties": {
+            "tobin_tax": {
+              "type": "object",
+              "required": [
+                "denom"
+              ],
+              "properties": {
+                "denom": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "tax_rate"
+          ],
+          "properties": {
+            "tax_rate": {
+              "type": "object"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "tax_proceeds"
+          ],
+          "properties": {
+            "tax_proceeds": {
+              "type": "object"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "tax_cap"
+          ],
+          "properties": {
+            "tax_cap": {
+              "type": "object",
+              "required": [
+                "denom"
+              ],
+              "properties": {
+                "denom": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "rewards_weight"
+          ],
+          "properties": {
+            "rewards_weight": {
+              "type": "object"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "seigniorage_proceeds"
+          ],
+          "properties": {
+            "seigniorage_proceeds": {
+              "type": "object"
+            }
+          }
+        }
+      ]
+    },
+    "Uint128": {
+      "type": "string"
+    }
+  }
+}

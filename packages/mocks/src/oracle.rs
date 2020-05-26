@@ -1,7 +1,7 @@
 use cosmwasm_std::{generic_err, to_binary, Decimal, QuerierResult};
 use std::collections::{BTreeMap, HashMap};
 
-use terra_bindings::{ExchangeRateResponse, ExchangeRatesResponse, OracleQuery, TobinTaxResponse};
+use terra_bindings::{ExchangeRateResponse, ExchangeRatesResponse, TerraQuery, TobinTaxResponse};
 
 #[derive(Clone, Default)]
 pub struct OracleQuerier {
@@ -42,9 +42,9 @@ impl OracleQuerier {
         }
     }
 
-    pub fn query(&self, request: &OracleQuery) -> QuerierResult {
+    pub fn query(&self, request: &TerraQuery) -> QuerierResult {
         match request {
-            OracleQuery::ExchangeRate { offer, ask } => {
+            TerraQuery::ExchangeRate { offer, ask } => {
                 // proper error on not found, serialize result on found
                 let rate = self.rates.get(offer).and_then(|tree| tree.get(ask));
                 if rate.is_none() {
@@ -59,7 +59,7 @@ impl OracleQuerier {
                 };
                 Ok(to_binary(&oracle_res))
             }
-            OracleQuery::ExchangeRates { offer } => {
+            TerraQuery::ExchangeRates { offer } => {
                 // proper error on not found, serialize result on found
                 let stored = self.rates.get(offer);
                 let rates = match stored {
@@ -75,12 +75,13 @@ impl OracleQuerier {
                 let oracle_res = ExchangeRatesResponse { rates };
                 Ok(to_binary(&oracle_res))
             }
-            OracleQuery::TobinTax { denom } => {
+            TerraQuery::TobinTax { denom } => {
                 // proper error on not found, serialize result on found
                 let tax = *self.taxes.get(denom).unwrap_or(&Decimal::zero());
                 let oracle_res = TobinTaxResponse { tax };
                 Ok(to_binary(&oracle_res))
             }
+            _ => panic!("DO NOT ENTER HERE"),
         }
     }
 }
