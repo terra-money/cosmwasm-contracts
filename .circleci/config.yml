@@ -6,8 +6,10 @@ workflows:
       - package_bindings
       - package_mocks
       - contract_maker
-      - fmt
-      - clippy
+      - contract_erc20
+      - contract_mask
+      - contract_staking
+
 
 jobs:
   package_bindings:
@@ -24,6 +26,9 @@ jobs:
       - run:
           name: Add wasm32 target
           command: rustup target add wasm32-unknown-unknown && rustup target list --installed
+      - run:
+          name: Add components to Rust toolchain
+          command: rustup component add rustfmt clippy
       - run:
           name: Build library for native target
           working_directory: ~/project/packages/bindings
@@ -74,6 +79,9 @@ jobs:
           keys:
             - cargocache-package_mocks-rust:1.41.1-{{ checksum "Cargo.lock" }}
       - run:
+          name: Add components to Rust toolchain
+          command: rustup component add rustfmt clippy
+      - run:
           name: Build library for native target
           working_directory: ~/project/packages/mocks
           command: cargo build --locked --no-default-features
@@ -110,6 +118,9 @@ jobs:
           name: Add wasm32 target
           command: rustup target add wasm32-unknown-unknown && rustup target list --installed
       - run:
+          name: Add components to Rust toolchain
+          command: rustup component add rustfmt clippy
+      - run:
           name: Build wasm binary
           command: cargo wasm --locked
       - run:
@@ -142,7 +153,7 @@ jobs:
             - /usr/local/cargo/registry
             - target
           key: cargocache-maker-rust:1.41.1-{{ checksum "Cargo.lock" }}
-  erc20:
+  contract_erc20:
     docker:
       - image: rust:1.41.1
     working_directory: ~/project/contracts/erc20
@@ -194,7 +205,7 @@ jobs:
             - /usr/local/cargo/registry
             - target
           key: cargocache-erc20-rust:1.41.1-{{ checksum "Cargo.lock" }}
-  escrow:
+  contract_escrow:
     docker:
       - image: rust:1.41.1
     working_directory: ~/project/escrow
@@ -246,7 +257,7 @@ jobs:
             - /usr/local/cargo/registry
             - target
           key: cargocache-escrow-rust:1.41.1-{{ checksum "Cargo.lock" }}
-  mask:
+  contract_mask:
     docker:
       - image: rust:1.41.1
     working_directory: ~/project/contracts/mask
