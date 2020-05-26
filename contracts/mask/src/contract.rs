@@ -4,8 +4,8 @@ use cosmwasm_std::{
 };
 
 use crate::msg::{
-    CustomMsgWrapper, CustomQuery, CustomQueryWrapper, CustomResponse, HandleMsg,
-    InitMsg, OwnerResponse, QueryMsg,
+    CustomMsgWrapper, CustomQuery, CustomQueryWrapper, CustomResponse, HandleMsg, InitMsg,
+    OwnerResponse, QueryMsg,
 };
 
 use crate::state::{config, config_read, State};
