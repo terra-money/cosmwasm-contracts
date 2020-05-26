@@ -18,6 +18,7 @@ and a precompiled wasm ready for deployment under `contract.wasm`. Take a look h
 
 * [escrow](https://github.com/terra-project/cosmwasm-contracts/tree/master/contracts/escrow) - A basic escrow with timeout and partial release
 * [erc20](https://github.com/terra-project/cosmwasm-contracts/tree/master/contracts/erc20) - Basic implementation the erc20 interface for CosmWasm, as a base for token designers
+* [maker](https://github.com/terra-project/cosmwasm-contracts/tree/master/contracts/maker) - Example implementation to show terra-binding for CosmWasm
 
 ## Development
 

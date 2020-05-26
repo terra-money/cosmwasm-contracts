@@ -12,14 +12,14 @@
         "swap": {
           "type": "object",
           "required": [
-            "ask",
-            "offer"
+            "ask_denom",
+            "offer_coin"
           ],
           "properties": {
-            "ask": {
+            "ask_denom": {
               "type": "string"
             },
-            "offer": {
+            "offer_coin": {
               "$ref": "#/definitions/Coin"
             }
           }

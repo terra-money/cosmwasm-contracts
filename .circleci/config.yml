@@ -6,6 +6,7 @@ workflows:
       - package_bindings
       - package_mocks
       - contract_maker
+      - contract_escrow
       - contract_erc20
       - contract_mask
       - contract_staking
@@ -208,7 +209,7 @@ jobs:
   contract_escrow:
     docker:
       - image: rust:1.41.1
-    working_directory: ~/project/escrow
+    working_directory: ~/project/contracts/escrow
     steps:
       - checkout:
           path: ~/project

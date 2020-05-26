@@ -133,7 +133,6 @@
       ]
     },
     "CustomMsg": {
-      "description": "CustomMsg is an override of CosmosMsg::Custom to show this works and can be extended in the contract",
       "anyOf": [
         {
           "type": "object",

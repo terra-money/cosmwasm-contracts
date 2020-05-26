@@ -17,7 +17,7 @@
             "msgs": {
               "type": "array",
               "items": {
-                "$ref": "#/definitions/CosmosMsg_for_CustomMsg"
+                "$ref": "#/definitions/CosmosMsg_for_CustomMsgWrapper"
               }
             }
           }
@@ -98,7 +98,7 @@
         }
       }
     },
-    "CosmosMsg_for_CustomMsg": {
+    "CosmosMsg_for_CustomMsgWrapper": {
       "anyOf": [
         {
           "type": "object",
@@ -118,7 +118,7 @@
           ],
           "properties": {
             "custom": {
-              "$ref": "#/definitions/CustomMsg"
+              "$ref": "#/definitions/CustomMsgWrapper"
             }
           }
         },
@@ -147,7 +147,6 @@
       ]
     },
     "CustomMsg": {
-      "description": "CustomMsg is an override of CosmosMsg::Custom to show this works and can be extended in the contract",
       "anyOf": [
         {
           "type": "object",
@@ -172,6 +171,22 @@
           }
         }
       ]
+    },
+    "CustomMsgWrapper": {
+      "description": "CustomMsgWrapper is an override of CosmosMsg::Custom to show this works and can be extended in the contract",
+      "type": "object",
+      "required": [
+        "msg_data",
+        "route"
+      ],
+      "properties": {
+        "msg_data": {
+          "$ref": "#/definitions/CustomMsg"
+        },
+        "route": {
+          "type": "string"
+        }
+      }
     },
     "HumanAddr": {
       "type": "string"
