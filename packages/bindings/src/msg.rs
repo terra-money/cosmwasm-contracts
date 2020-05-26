@@ -34,7 +34,7 @@ pub fn create_swap_msg(
     offer_coin: Coin,
     ask_denom: String,
 ) -> CosmosMsg<TerraMsgWrapper> {
-    return TerraMsgWrapper {
+    TerraMsgWrapper {
         route: "market".to_string(),
         msg_data: TerraMsg::Swap {
             trader,
@@ -42,5 +42,5 @@ pub fn create_swap_msg(
             ask_denom,
         },
     }
-    .into();
+    .into()
 }

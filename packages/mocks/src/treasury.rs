@@ -37,7 +37,7 @@ impl TreasuryQuerier {
     ) -> Self {
         let mut tax_cap = HashMap::new();
         for (denom, cap) in tax_caps.iter() {
-            tax_cap.insert(denom.to_string(), Uint128(*cap));
+            tax_cap.insert((*denom).to_string(), Uint128(*cap));
         }
         TreasuryQuerier {
             tax_rate,
