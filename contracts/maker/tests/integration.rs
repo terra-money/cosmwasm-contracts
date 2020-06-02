@@ -94,17 +94,16 @@ fn buy_limit() {
     if let CosmosMsg::Custom(TerraMsgWrapper { route, msg_data }) = &res.messages[0] {
         assert_eq!(route, "market");
 
-        if let TerraMsg::Swap {
-            trader,
-            offer_coin,
-            ask_denom,
-        } = &msg_data
-        {
-            assert_eq!(trader, &contract_addr);
-            assert_eq!(offer_coin, &coin(100, "ETH"));
-            assert_eq!(ask_denom, "BTC");
-        } else {
-            panic!("Expected swap message, got: {:?}", &msg_data);
+        match &msg_data {
+            TerraMsg::Swap {
+                trader,
+                offer_coin,
+                ask_denom,
+            } => {
+                assert_eq!(trader, &contract_addr);
+                assert_eq!(offer_coin, &coin(100, "ETH"));
+                assert_eq!(ask_denom, "BTC");
+            }
         }
     } else {
         panic!("Expected swap message, got: {:?}", &res.messages[0]);

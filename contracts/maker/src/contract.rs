@@ -1,8 +1,8 @@
 use std::cmp::min;
 
 use cosmwasm_std::{
-    generic_err, to_binary, to_vec, unauthorized, Api, Binary, Coin, Env, Extern, HandleResponse,
-    InitResponse, Querier, QueryRequest, StdResult, Storage, Uint128,
+    generic_err, log, to_binary, to_vec, unauthorized, Api, BankMsg, Binary, Coin, Env, Extern,
+    HandleResponse, HumanAddr, InitResponse, Querier, QueryRequest, StdResult, Storage, Uint128,
 };
 use terra_bindings::{create_swap_msg, TerraMsgWrapper, TerraQuerier, TerraQueryWrapper};
 
@@ -35,7 +35,41 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
     match msg {
         HandleMsg::Buy { limit } => buy(deps, env, limit),
         HandleMsg::Sell { limit } => sell(deps, env, limit),
+        HandleMsg::Send { coin, recipient } => transfer(deps, env, coin, recipient),
     }
+}
+
+pub fn transfer<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    coin: Coin,
+    to_addr: HumanAddr,
+) -> StdResult<HandleResponse<TerraMsgWrapper>> {
+    let querier = TerraQuerier::new(&deps.querier);
+    let tax_rate = querier.query_tax_rate()?;
+    let tax_cap = querier.query_tax_cap(&coin.denom)?;
+    let from_addr = deps.api.human_address(&env.contract.address)?;
+
+    let mut expected_tax: Uint128 = tax_rate * coin.amount;
+    if expected_tax > tax_cap {
+        expected_tax = tax_cap;
+    }
+
+    let res = HandleResponse {
+        log: vec![log("action", "send"), log("destination", to_addr.as_str())],
+        messages: vec![BankMsg::Send {
+            from_address: from_addr,
+            to_address: to_addr,
+            amount: vec![Coin {
+                denom: coin.denom,
+                amount: (coin.amount - expected_tax)?,
+            }],
+        }
+        .into()],
+        data: None,
+    };
+
+    Ok(res)
 }
 
 pub fn buy<S: Storage, A: Api, Q: Querier>(
@@ -217,17 +251,16 @@ mod tests {
         if let CosmosMsg::Custom(TerraMsgWrapper { route, msg_data }) = &res.messages[0] {
             assert_eq!(route, "market");
 
-            if let TerraMsg::Swap {
-                trader,
-                offer_coin,
-                ask_denom,
-            } = &msg_data
-            {
-                assert_eq!(trader, &contract_addr);
-                assert_eq!(offer_coin, &coin(100, "ETH"));
-                assert_eq!(ask_denom, "BTC");
-            } else {
-                panic!("Expected swap message, got: {:?}", &msg_data);
+            match &msg_data {
+                TerraMsg::Swap {
+                    trader,
+                    offer_coin,
+                    ask_denom,
+                } => {
+                    assert_eq!(trader, &contract_addr);
+                    assert_eq!(offer_coin, &coin(100, "ETH"));
+                    assert_eq!(ask_denom, "BTC");
+                }
             }
         } else {
             panic!("Expected swap message, got: {:?}", &res.messages[0]);
@@ -278,18 +311,18 @@ mod tests {
         if let CosmosMsg::Custom(TerraMsgWrapper { route, msg_data }) = &res.messages[0] {
             assert_eq!(route, "market");
 
-            if let TerraMsg::Swap {
-                trader,
-                offer_coin,
-                ask_denom,
-            } = &msg_data
-            {
-                assert_eq!(trader, &contract_addr);
-                assert_eq!(offer_coin, &coin(120, "BTC"));
-                assert_eq!(ask_denom, "ETH");
-            } else {
-                panic!("Expected swap message, got: {:?}", &msg_data);
+            match &msg_data {
+                TerraMsg::Swap {
+                    trader,
+                    offer_coin,
+                    ask_denom,
+                } => {
+                    assert_eq!(trader, &contract_addr);
+                    assert_eq!(offer_coin, &coin(120, "BTC"));
+                    assert_eq!(ask_denom, "ETH");
+                }
             }
+
         } else {
             panic!("Expected swap message, got: {:?}", &res.messages[0]);
         }
@@ -319,20 +352,119 @@ mod tests {
         if let CosmosMsg::Custom(TerraMsgWrapper { route, msg_data }) = &res.messages[0] {
             assert_eq!(route, "market");
 
-            if let TerraMsg::Swap {
-                trader,
-                offer_coin,
-                ask_denom,
-            } = &msg_data
-            {
-                assert_eq!(trader, &contract_addr);
-                assert_eq!(offer_coin, &coin(133, "BTC"));
-                assert_eq!(ask_denom, "ETH");
-            } else {
-                panic!("Expected swap message, got: {:?}", &msg_data);
+            match &msg_data {
+                TerraMsg::Swap {
+                    trader,
+                    offer_coin,
+                    ask_denom,
+                } => {
+                    assert_eq!(trader, &contract_addr);
+                    assert_eq!(offer_coin, &coin(133, "BTC"));
+                    assert_eq!(ask_denom, "ETH");
+                }
             }
         } else {
             panic!("Expected swap message, got: {:?}", &res.messages[0]);
+        }
+    }
+
+    #[test]
+    fn send_with_tax() {
+        let mut deps = mock_dependencies(20, &coins(10000, "SDT"));
+
+        // set mock treasury querier
+        let tax_rate = Decimal::percent(2);
+        let tax_proceeds = vec![];
+        let tax_caps = &[("SDT", 10u128), ("UST", 500u128)];
+        let reward_rate = Decimal::zero();
+        let seignorage = 777;
+
+        deps.querier
+            .with_treasury(tax_rate, &tax_proceeds, tax_caps, reward_rate, seignorage);
+
+        let msg = InitMsg {
+            ask: "UST".into(),
+            offer: "SDT".into(),
+        };
+        let env = mock_env(&deps.api, "creator", &coins(10000, "SDT"));
+        let _res = init(&mut deps, env, msg).unwrap();
+
+        // we buy BTC with half the ETH
+        let env = mock_env(&deps.api, "creator", &[]);
+        let contract_addr = deps.api.human_address(&env.contract.address).unwrap();
+        let receiver_addr = HumanAddr::from("receiver");
+        let msg = HandleMsg::Send {
+            coin: Coin {
+                denom: "SDT".to_string(),
+                amount: Uint128(10000),
+            },
+            recipient: receiver_addr.clone(),
+        };
+        let res = handle(&mut deps, env, msg).unwrap();
+
+        // make sure we produce proper send with tax consideration
+        assert_eq!(1, res.messages.len());
+        if let CosmosMsg::Bank(BankMsg::Send {
+            from_address,
+            to_address,
+            amount,
+        }) = &res.messages[0]
+        {
+            assert_eq!(from_address, &contract_addr);
+            assert_eq!(to_address, &receiver_addr);
+            assert_eq!(amount, &vec![coin(9990, "SDT")]);
+        } else {
+            panic!("Expected bank send message, got: {:?}", &res.messages[0]);
+        }
+    }
+
+    #[test]
+    fn send_with_capped_tax() {
+        let mut deps = mock_dependencies(20, &coins(10000, "SDT"));
+
+        // set mock treasury querier
+        let tax_rate = Decimal::percent(2);
+        let tax_proceeds = vec![];
+        let tax_caps = &[("SDT", 10u128), ("UST", 500u128)];
+        let reward_rate = Decimal::zero();
+        let seignorage = 777;
+
+        deps.querier
+            .with_treasury(tax_rate, &tax_proceeds, tax_caps, reward_rate, seignorage);
+
+        let msg = InitMsg {
+            ask: "UST".into(),
+            offer: "SDT".into(),
+        };
+        let env = mock_env(&deps.api, "creator", &coins(10000, "SDT"));
+        let _res = init(&mut deps, env, msg).unwrap();
+
+        // we buy BTC with half the ETH
+        let env = mock_env(&deps.api, "creator", &[]);
+        let contract_addr = deps.api.human_address(&env.contract.address).unwrap();
+        let receiver_addr = HumanAddr::from("receiver");
+        let msg = HandleMsg::Send {
+            coin: Coin {
+                denom: "SDT".to_string(),
+                amount: Uint128(50),
+            },
+            recipient: receiver_addr.clone(),
+        };
+        let res = handle(&mut deps, env, msg).unwrap();
+
+        // make sure tax is capped
+        assert_eq!(1, res.messages.len());
+        if let CosmosMsg::Bank(BankMsg::Send {
+            from_address,
+            to_address,
+            amount,
+        }) = &res.messages[0]
+        {
+            assert_eq!(from_address, &contract_addr);
+            assert_eq!(to_address, &receiver_addr);
+            assert_eq!(amount, &vec![coin(49, "SDT")]);
+        } else {
+            panic!("Expected bank send message, got: {:?}", &res.messages[0]);
         }
     }
 
@@ -488,8 +620,8 @@ mod tests {
             },
         };
         let res = query(&mut deps, tax_rate_query).unwrap();
-        let rate: TaxRateResponse = from_binary(&res).unwrap();
-        assert_eq!(rate.tax, tax_rate);
+        let tax_rate_res: TaxRateResponse = from_binary(&res).unwrap();
+        assert_eq!(tax_rate_res.rate, tax_rate);
 
         let tax_cap_query = QueryMsg::Reflect {
             query: TerraQueryWrapper {

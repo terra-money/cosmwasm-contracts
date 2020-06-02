@@ -77,8 +77,8 @@ impl OracleQuerier {
             }
             TerraQuery::TobinTax { denom } => {
                 // proper error on not found, serialize result on found
-                let tax = *self.taxes.get(denom).unwrap_or(&Decimal::zero());
-                let oracle_res = TobinTaxResponse { tax };
+                let rate = *self.taxes.get(denom).unwrap_or(&Decimal::zero());
+                let oracle_res = TobinTaxResponse { rate };
                 Ok(to_binary(&oracle_res))
             }
             _ => panic!("DO NOT ENTER HERE"),

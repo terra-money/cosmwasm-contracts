@@ -55,13 +55,13 @@ pub struct ExchangeRatesResponse {
 /// TobinTaxResponse is data format returned from OracleRequest::TobinTax query
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct TobinTaxResponse {
-    pub tax: Decimal,
+    pub rate: Decimal,
 }
 
 /// TaxRateResponse is data format returned from TreasuryRequest::TaxRate query
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct TaxRateResponse {
-    pub tax: Decimal,
+    pub rate: Decimal,
 }
 
 /// TaxProceedsResponse is data format returned from TreasuryRequest::TaxProceeds query

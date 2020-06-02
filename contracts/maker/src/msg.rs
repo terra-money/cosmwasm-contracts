@@ -18,6 +18,8 @@ pub enum HandleMsg {
     Buy { limit: Option<Uint128> },
     /// Sell is the reverse of buy. Selling ask and buying offer.
     Sell { limit: Option<Uint128> },
+    /// Send the given amount of coins to target address
+    Send { coin: Coin, recipient: HumanAddr },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

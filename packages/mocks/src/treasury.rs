@@ -51,7 +51,7 @@ impl TreasuryQuerier {
     pub fn query(&self, request: &TerraQuery) -> QuerierResult {
         match request {
             TerraQuery::TaxRate {} => {
-                let res = TaxRateResponse { tax: self.tax_rate };
+                let res = TaxRateResponse { rate: self.tax_rate };
                 Ok(to_binary(&res))
             }
             TerraQuery::TaxCap { denom } => {
@@ -101,8 +101,8 @@ mod test {
         // test all treasury functions
         let tax_rate_query = TerraQuery::TaxRate {};
         let res = querier.query(&tax_rate_query).unwrap().unwrap();
-        let rate: TaxRateResponse = from_binary(&res).unwrap();
-        assert_eq!(rate.tax, tax_rate);
+        let tax_rate_res: TaxRateResponse = from_binary(&res).unwrap();
+        assert_eq!(tax_rate_res.rate, tax_rate);
 
         let tax_cap_query = TerraQuery::TaxCap {
             denom: "ETH".to_string(),

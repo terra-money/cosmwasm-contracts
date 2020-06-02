@@ -98,7 +98,7 @@ impl<'a, Q: Querier> TerraQuerier<'a, Q> {
             query_data: TerraQuery::TaxRate {},
         };
         let res: TaxRateResponse = self.querier.custom_query(&request.into())?;
-        Ok(res.tax)
+        Ok(res.rate)
     }
 
     pub fn query_tobin_tax<T: Into<String>>(&self, denom: T) -> StdResult<Decimal> {
@@ -109,6 +109,6 @@ impl<'a, Q: Querier> TerraQuerier<'a, Q> {
             },
         };
         let res: TobinTaxResponse = self.querier.custom_query(&request.into())?;
-        Ok(res.tax)
+        Ok(res.rate)
     }
 }
