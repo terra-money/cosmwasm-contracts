@@ -4,10 +4,10 @@
   "description": "TobinTaxResponse is data format returned from OracleRequest::TobinTax query",
   "type": "object",
   "required": [
-    "tax"
+    "rate"
   ],
   "properties": {
-    "tax": {
+    "rate": {
       "$ref": "#/definitions/Decimal"
     }
   },

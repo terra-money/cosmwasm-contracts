@@ -28,6 +28,37 @@
           }
         }
       }
+    },
+    {
+      "type": "object",
+      "required": [
+        "swap_send"
+      ],
+      "properties": {
+        "swap_send": {
+          "type": "object",
+          "required": [
+            "ask_denom",
+            "offer_coin",
+            "receiver",
+            "trader"
+          ],
+          "properties": {
+            "ask_denom": {
+              "type": "string"
+            },
+            "offer_coin": {
+              "$ref": "#/definitions/Coin"
+            },
+            "receiver": {
+              "$ref": "#/definitions/HumanAddr"
+            },
+            "trader": {
+              "$ref": "#/definitions/HumanAddr"
+            }
+          }
+        }
+      }
     }
   ],
   "definitions": {

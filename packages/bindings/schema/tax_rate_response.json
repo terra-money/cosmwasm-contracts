@@ -4,10 +4,10 @@
   "description": "TaxRateResponse is data format returned from TreasuryRequest::TaxRate query",
   "type": "object",
   "required": [
-    "tax"
+    "rate"
   ],
   "properties": {
-    "tax": {
+    "rate": {
       "$ref": "#/definitions/Decimal"
     }
   },

@@ -2,7 +2,7 @@ mod msg;
 mod querier;
 mod query;
 
-pub use msg::{create_swap_msg, TerraMsg, TerraMsgWrapper};
+pub use msg::{create_swap_msg, create_swap_send_msg, TerraMsg, TerraMsgWrapper};
 pub use querier::TerraQuerier;
 pub use query::{
     ExchangeRateResponse, ExchangeRatesResponse, RewardsWeightResponse,

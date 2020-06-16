@@ -26,6 +26,12 @@ pub enum TerraMsg {
         offer_coin: Coin,
         ask_denom: String,
     },
+    SwapSend {
+        from_address: HumanAddr,
+        to_address: HumanAddr,
+        offer_coin: Coin,
+        ask_denom: String,
+    },
 }
 
 // create_swap_msg returns wrapped swap msg
@@ -38,6 +44,25 @@ pub fn create_swap_msg(
         route: "market".to_string(),
         msg_data: TerraMsg::Swap {
             trader,
+            offer_coin,
+            ask_denom,
+        },
+    }
+    .into()
+}
+
+// create_swap_send_msg returns wrapped swap send msg
+pub fn create_swap_send_msg(
+    from_address: HumanAddr,
+    to_address: HumanAddr,
+    offer_coin: Coin,
+    ask_denom: String,
+) -> CosmosMsg<TerraMsgWrapper> {
+    TerraMsgWrapper {
+        route: "market".to_string(),
+        msg_data: TerraMsg::SwapSend {
+            from_address,
+            to_address,
             offer_coin,
             ask_denom,
         },

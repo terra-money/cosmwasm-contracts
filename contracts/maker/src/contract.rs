@@ -1,10 +1,13 @@
 use std::cmp::min;
 
 use cosmwasm_std::{
-    generic_err, log, to_binary, to_vec, unauthorized, Api, BankMsg, Binary, Coin, Env, Extern,
-    HandleResponse, HumanAddr, InitResponse, Querier, QueryRequest, StdResult, Storage, Uint128,
+    generic_err, log, to_binary, to_vec, unauthorized, Api, BankMsg, Binary, Coin, CosmosMsg, Env,
+    Extern, HandleResponse, HumanAddr, InitResponse, Querier, QueryRequest, StdResult, Storage,
+    Uint128,
 };
-use terra_bindings::{create_swap_msg, TerraMsgWrapper, TerraQuerier, TerraQueryWrapper};
+use terra_bindings::{
+    create_swap_msg, create_swap_send_msg, TerraMsgWrapper, TerraQuerier, TerraQueryWrapper,
+};
 
 use crate::msg::{
     ConfigResponse, ExchangeRateResponse, HandleMsg, InitMsg, QueryMsg, SimulateResponse,
@@ -33,8 +36,8 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
     msg: HandleMsg,
 ) -> StdResult<HandleResponse<TerraMsgWrapper>> {
     match msg {
-        HandleMsg::Buy { limit } => buy(deps, env, limit),
-        HandleMsg::Sell { limit } => sell(deps, env, limit),
+        HandleMsg::Buy { limit, recipient } => buy(deps, env, limit, recipient),
+        HandleMsg::Sell { limit, recipient } => sell(deps, env, limit, recipient),
         HandleMsg::Send { coin, recipient } => transfer(deps, env, coin, recipient),
     }
 }
@@ -76,6 +79,7 @@ pub fn buy<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
     limit: Option<Uint128>,
+    recipient: Option<HumanAddr>,
 ) -> StdResult<HandleResponse<TerraMsgWrapper>> {
     let state = config_read(&deps.storage).load()?;
     if env.message.sender != state.owner {
@@ -91,8 +95,15 @@ pub fn buy<S: Storage, A: Api, Q: Querier>(
         offer.amount = min(offer.amount, stop);
     }
 
+    let msg: CosmosMsg<TerraMsgWrapper>;
+    if let Some(recipient) = recipient {
+        msg = create_swap_send_msg(contract_addr, recipient, offer, state.ask);
+    } else {
+        msg = create_swap_msg(contract_addr, offer, state.ask);
+    }
+
     Ok(HandleResponse {
-        messages: vec![create_swap_msg(contract_addr, offer, state.ask)],
+        messages: vec![msg],
         log: vec![],
         data: None,
     })
@@ -102,6 +113,7 @@ pub fn sell<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
     limit: Option<Uint128>,
+    recipient: Option<HumanAddr>,
 ) -> StdResult<HandleResponse<TerraMsgWrapper>> {
     let state = config_read(&deps.storage).load()?;
     if env.message.sender != state.owner {
@@ -113,12 +125,20 @@ pub fn sell<S: Storage, A: Api, Q: Querier>(
     if sell.amount == Uint128(0) {
         return Ok(HandleResponse::default());
     }
+
     if let Some(stop) = limit {
         sell.amount = min(sell.amount, stop);
     }
 
+    let msg: CosmosMsg<TerraMsgWrapper>;
+    if let Some(recipient) = recipient {
+        msg = create_swap_send_msg(contract_addr, recipient, sell, state.offer);
+    } else {
+        msg = create_swap_msg(contract_addr, sell, state.offer);
+    }
+
     Ok(HandleResponse {
-        messages: vec![create_swap_msg(contract_addr, sell, state.offer)],
+        messages: vec![msg],
         log: vec![],
         data: None,
     })
@@ -243,6 +263,7 @@ mod tests {
         let contract_addr = deps.api.human_address(&env.contract.address).unwrap();
         let msg = HandleMsg::Buy {
             limit: Some(Uint128(100)),
+            recipient: None,
         };
         let res = handle(&mut deps, env, msg).unwrap();
 
@@ -261,6 +282,52 @@ mod tests {
                     assert_eq!(offer_coin, &coin(100, "ETH"));
                     assert_eq!(ask_denom, "BTC");
                 }
+                _ => panic!("MUST NOT ENTER HERE"),
+            }
+        } else {
+            panic!("Expected swap message, got: {:?}", &res.messages[0]);
+        }
+    }
+
+    #[test]
+    fn buy_send_limit() {
+        let mut deps = mock_dependencies(20, &coins(200, "ETH"));
+
+        let msg = InitMsg {
+            ask: "BTC".into(),
+            offer: "ETH".into(),
+        };
+        let env = mock_env(&deps.api, "creator", &coins(200, "ETH"));
+        let _res = init(&mut deps, env, msg).unwrap();
+
+        // we buy BTC with half the ETH
+        let env = mock_env(&deps.api, "creator", &[]);
+        let recipient = HumanAddr("addr0000".to_string());
+        let contract_addr = deps.api.human_address(&env.contract.address).unwrap();
+        let msg = HandleMsg::Buy {
+            limit: Some(Uint128(100)),
+            recipient: Some(HumanAddr("addr0000".to_string())),
+        };
+        let res = handle(&mut deps, env, msg).unwrap();
+
+        // make sure we produce proper trade order
+        assert_eq!(1, res.messages.len());
+        if let CosmosMsg::Custom(TerraMsgWrapper { route, msg_data }) = &res.messages[0] {
+            assert_eq!(route, "market");
+
+            match &msg_data {
+                TerraMsg::SwapSend {
+                    from_address,
+                    to_address,
+                    offer_coin,
+                    ask_denom,
+                } => {
+                    assert_eq!(from_address, &contract_addr);
+                    assert_eq!(to_address, &recipient);
+                    assert_eq!(offer_coin, &coin(100, "ETH"));
+                    assert_eq!(ask_denom, "BTC");
+                }
+                _ => panic!("MUST NOT ENTER HERE"),
             }
         } else {
             panic!("Expected swap message, got: {:?}", &res.messages[0]);
@@ -282,6 +349,7 @@ mod tests {
         let env = mock_env(&deps.api, "someone else", &[]);
         let msg = HandleMsg::Buy {
             limit: Some(Uint128(100)),
+            recipient: None,
         };
         match handle(&mut deps, env, msg).unwrap_err() {
             StdError::Unauthorized { .. } => {}
@@ -303,7 +371,10 @@ mod tests {
         // we sell all the BTC (faked balance above)
         let env = mock_env(&deps.api, "creator", &[]);
         let contract_addr = deps.api.human_address(&env.contract.address).unwrap();
-        let msg = HandleMsg::Sell { limit: None };
+        let msg = HandleMsg::Sell {
+            limit: None,
+            recipient: None,
+        };
         let res = handle(&mut deps, env, msg).unwrap();
 
         // make sure we produce proper trade order
@@ -321,8 +392,53 @@ mod tests {
                     assert_eq!(offer_coin, &coin(120, "BTC"));
                     assert_eq!(ask_denom, "ETH");
                 }
+                _ => panic!("MUST NOT ENTER HERE"),
             }
+        } else {
+            panic!("Expected swap message, got: {:?}", &res.messages[0]);
+        }
+    }
 
+    #[test]
+    fn sell_send_no_limit() {
+        let mut deps = mock_dependencies(20, &[coin(200, "ETH"), coin(120, "BTC")]);
+
+        let msg = InitMsg {
+            ask: "BTC".into(),
+            offer: "ETH".into(),
+        };
+        let env = mock_env(&deps.api, "creator", &[]);
+        let _res = init(&mut deps, env, msg).unwrap();
+
+        // we sell all the BTC (faked balance above)
+        let env = mock_env(&deps.api, "creator", &[]);
+        let contract_addr = deps.api.human_address(&env.contract.address).unwrap();
+        let recipient = HumanAddr("addr0000".to_string());
+        let msg = HandleMsg::Sell {
+            limit: None,
+            recipient: Some(HumanAddr("addr0000".to_string())),
+        };
+        let res = handle(&mut deps, env, msg).unwrap();
+
+        // make sure we produce proper trade order
+        assert_eq!(1, res.messages.len());
+        if let CosmosMsg::Custom(TerraMsgWrapper { route, msg_data }) = &res.messages[0] {
+            assert_eq!(route, "market");
+
+            match &msg_data {
+                TerraMsg::SwapSend {
+                    from_address,
+                    to_address,
+                    offer_coin,
+                    ask_denom,
+                } => {
+                    assert_eq!(from_address, &contract_addr);
+                    assert_eq!(to_address, &recipient);
+                    assert_eq!(offer_coin, &coin(120, "BTC"));
+                    assert_eq!(ask_denom, "ETH");
+                }
+                _ => panic!("MUST NOT ENTER HERE"),
+            }
         } else {
             panic!("Expected swap message, got: {:?}", &res.messages[0]);
         }
@@ -344,6 +460,7 @@ mod tests {
         let contract_addr = deps.api.human_address(&env.contract.address).unwrap();
         let msg = HandleMsg::Sell {
             limit: Some(Uint128(250)),
+            recipient: None,
         };
         let res = handle(&mut deps, env, msg).unwrap();
 
@@ -362,6 +479,7 @@ mod tests {
                     assert_eq!(offer_coin, &coin(133, "BTC"));
                     assert_eq!(ask_denom, "ETH");
                 }
+                _ => panic!("MUST NOT ENTER HERE"),
             }
         } else {
             panic!("Expected swap message, got: {:?}", &res.messages[0]);

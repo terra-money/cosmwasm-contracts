@@ -15,9 +15,9 @@ pub struct InitMsg {
 #[serde(rename_all = "snake_case")]
 pub enum HandleMsg {
     /// Buy will try to buy ask and sell offer, up to limit offer tokens, or current balance
-    Buy { limit: Option<Uint128> },
+    Buy { limit: Option<Uint128>, recipient: Option<HumanAddr> },
     /// Sell is the reverse of buy. Selling ask and buying offer.
-    Sell { limit: Option<Uint128> },
+    Sell { limit: Option<Uint128>, recipient: Option<HumanAddr> },
     /// Send the given amount of coins to target address
     Send { coin: Coin, recipient: HumanAddr },
 }
