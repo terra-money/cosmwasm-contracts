@@ -1,9 +1,9 @@
 use std::cmp::min;
 
 use cosmwasm_std::{
-    generic_err, log, to_binary, to_vec, unauthorized, Api, BankMsg, Binary, Coin, CosmosMsg, Env,
+    log, to_binary, to_vec, Api, BankMsg, Binary, Coin, CosmosMsg, Env,
     Extern, HandleResponse, HumanAddr, InitResponse, Querier, QueryRequest, StdResult, Storage,
-    Uint128,
+    Uint128, StdError,
 };
 use terra_bindings::{
     create_swap_msg, create_swap_send_msg, TerraMsgWrapper, TerraQuerier, TerraQueryWrapper,
@@ -83,7 +83,7 @@ pub fn buy<S: Storage, A: Api, Q: Querier>(
 ) -> StdResult<HandleResponse<TerraMsgWrapper>> {
     let state = config_read(&deps.storage).load()?;
     if env.message.sender != state.owner {
-        return Err(unauthorized());
+        return Err(StdError::unauthorized());
     }
 
     let contract_addr = deps.api.human_address(&env.contract.address)?;
@@ -117,7 +117,7 @@ pub fn sell<S: Storage, A: Api, Q: Querier>(
 ) -> StdResult<HandleResponse<TerraMsgWrapper>> {
     let state = config_read(&deps.storage).load()?;
     if env.message.sender != state.owner {
-        return Err(unauthorized());
+        return Err(StdError::unauthorized());
     }
 
     let contract_addr = deps.api.human_address(&env.contract.address)?;
@@ -187,7 +187,7 @@ fn query_swap<S: Storage, A: Api, Q: Querier>(
     } else if offer.denom == state.offer {
         state.ask
     } else {
-        return Err(generic_err(format!(
+        return Err(StdError::generic_err(format!(
             "Cannot simulate '{}' swap, neither contract's ask nor offer",
             offer.denom
         )));
@@ -208,7 +208,7 @@ fn query_reflect<S: Storage, A: Api, Q: Querier>(
     let raw_request = to_vec(&request)?;
     deps.querier
         .raw_query(&raw_request)
-        .map_err(|e| generic_err(format!("System error: {}", e)))?
+        .map_err(|e| StdError::generic_err(format!("System error: {}", e)))?
 }
 
 #[cfg(test)]

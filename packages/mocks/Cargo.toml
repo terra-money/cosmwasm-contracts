@@ -12,6 +12,6 @@ readme = "README.md"
 
 [dependencies]
 terra-bindings = { path = "../bindings", version = "0.1.0" }
-cosmwasm-std = { version = "0.8.0" }
+cosmwasm-std = { version = "0.9.0" }
 schemars = "0.7"
 serde = { version = "1.0.103", default-features = false, features = ["derive"] }

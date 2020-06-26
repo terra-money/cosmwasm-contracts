@@ -1,14 +1,13 @@
 [package]
-name = "reflect"
-version = "0.8.0"
+name = "cw-mask"
+version = "0.3.0"
 authors = ["Ethan Frey <ethanfrey@users.noreply.github.com>"]
-publish = false
 edition = "2018"
-description = "Reflect messages to use for test cases - based on cw-mask"
+description = "A Mask for CosmWasm - allows you to reflect arbitrary messages with the contract's address"
 license = "Apache-2.0"
 
 exclude = [
-  # Those files are cosmwasm-opt artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
+  # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
   "contract.wasm",
   "hash.txt",
 ]
@@ -38,11 +37,11 @@ cranelift = ["cosmwasm-vm/default-cranelift"]
 singlepass = ["cosmwasm-vm/default-singlepass"]
 
 [dependencies]
-cosmwasm-std = { version = "0.8.0", features = ["staking"] }
-cosmwasm-storage = { version = "0.8.0" }
+cosmwasm-std = { version = "0.9.0", features = ["staking"] }
+cosmwasm-storage = { version = "0.9.0" }
 schemars = "0.7"
 serde = { version = "1.0.103", default-features = false, features = ["derive"] }
 
 [dev-dependencies]
-cosmwasm-vm = { version = "0.8.0", default-features = false, features = ["staking"] }
-cosmwasm-schema = { version = "0.8.0" }
+cosmwasm-vm = { version = "0.9.0", default-features = false }
+cosmwasm-schema = "0.9.0"

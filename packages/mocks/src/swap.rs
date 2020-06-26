@@ -1,4 +1,4 @@
-use cosmwasm_std::{generic_err, to_binary, Coin, Decimal, QuerierResult};
+use cosmwasm_std::{StdError, to_binary, Coin, Decimal, QuerierResult};
 use std::collections::{BTreeMap, HashMap};
 
 use terra_bindings::{SwapResponse, TerraQuery};
@@ -31,7 +31,7 @@ impl SwapQuerier {
                 let amount = match rate {
                     Some(r) => offer_coin.amount * *r,
                     None => {
-                        return Ok(Err(generic_err(format!(
+                        return Ok(Err(StdError::generic_err(format!(
                             "No rate listed for {} to {}",
                             offer_coin.denom, ask_denom,
                         ))))

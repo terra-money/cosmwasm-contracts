@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    generic_err, log, to_binary, unauthorized, Api, Binary, CosmosMsg, Env, Extern, HandleResponse,
-    HumanAddr, InitResponse, Querier, StdResult, Storage,
+    log, to_binary, Api, Binary, CosmosMsg, Env, Extern, HandleResponse, HumanAddr, InitResponse,
+    Querier, StdError, StdResult, Storage,
 };
 
 use crate::msg::{
@@ -42,10 +42,10 @@ pub fn try_reflect<S: Storage, A: Api, Q: Querier>(
 ) -> StdResult<HandleResponse<CustomMsgWrapper>> {
     let state = config(&mut deps.storage).load()?;
     if env.message.sender != state.owner {
-        return Err(unauthorized());
+        return Err(StdError::unauthorized());
     }
     if msgs.is_empty() {
-        return Err(generic_err("Must reflect at least one message"));
+        return Err(StdError::generic_err("Must reflect at least one message"));
     }
     let res = HandleResponse {
         messages: msgs,
@@ -63,13 +63,13 @@ pub fn try_change_owner<S: Storage, A: Api, Q: Querier>(
     let api = deps.api;
     config(&mut deps.storage).update(|mut state| {
         if env.message.sender != state.owner {
-            return Err(unauthorized());
+            return Err(StdError::unauthorized());
         }
         state.owner = api.canonical_address(&owner)?;
         Ok(state)
     })?;
     Ok(HandleResponse {
-        log: vec![log("action", "change_owner"), log("owner", owner.as_str())],
+        log: vec![log("action", "change_owner"), log("owner", owner)],
         ..HandleResponse::default()
     })
 }
@@ -79,44 +79,43 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
     msg: QueryMsg,
 ) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Owner {} => query_owner(deps),
-        QueryMsg::ReflectCustom { text } => query_reflect(deps, text),
+        QueryMsg::Owner {} => to_binary(&query_owner(deps)?),
+        QueryMsg::ReflectCustom { text } => to_binary(&query_reflect(deps, text)?),
     }
 }
 
-fn query_owner<S: Storage, A: Api, Q: Querier>(deps: &Extern<S, A, Q>) -> StdResult<Binary> {
+fn query_owner<S: Storage, A: Api, Q: Querier>(deps: &Extern<S, A, Q>) -> StdResult<OwnerResponse> {
     let state = config_read(&deps.storage).load()?;
-
     let resp = OwnerResponse {
         owner: deps.api.human_address(&state.owner)?,
     };
-    to_binary(&resp)
+    Ok(resp)
 }
 
 fn query_reflect<S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>,
     text: String,
-) -> StdResult<Binary> {
+) -> StdResult<CustomResponse> {
     let req = CustomQueryWrapper {
         route: "mask".to_string(),
         query_data: CustomQuery::Capital { text },
     }
     .into();
-    let resp: CustomResponse = deps.querier.custom_query(&req)?;
-    to_binary(&resp)
+
+    deps.querier.custom_query(&req)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::msg::CustomMsg;
-    use crate::testing::mock_dependencies;
+    use crate::testing::mock_dependencies_with_custom_querier;
     use cosmwasm_std::testing::mock_env;
-    use cosmwasm_std::{coin, coins, from_binary, BankMsg, Binary, StakingMsg, StdError};
+    use cosmwasm_std::{coin, coins, BankMsg, Binary, StakingMsg, StdError};
 
     #[test]
     fn proper_initialization() {
-        let mut deps = mock_dependencies(20, &[]);
+        let mut deps = mock_dependencies_with_custom_querier(20, &[]);
 
         let msg = InitMsg {};
         let env = mock_env(&deps.api, "creator", &coins(1000, "earth"));
@@ -126,14 +125,13 @@ mod tests {
         assert_eq!(0, res.messages.len());
 
         // it worked, let's query the state
-        let res = query(&deps, QueryMsg::Owner {}).unwrap();
-        let value: OwnerResponse = from_binary(&res).unwrap();
+        let value = query_owner(&deps).unwrap();
         assert_eq!("creator", value.owner.as_str());
     }
 
     #[test]
     fn reflect() {
-        let mut deps = mock_dependencies(20, &[]);
+        let mut deps = mock_dependencies_with_custom_querier(20, &[]);
 
         let msg = InitMsg {};
         let env = mock_env(&deps.api, "creator", &coins(2, "token"));
@@ -156,7 +154,7 @@ mod tests {
 
     #[test]
     fn reflect_requires_owner() {
-        let mut deps = mock_dependencies(20, &[]);
+        let mut deps = mock_dependencies_with_custom_querier(20, &[]);
 
         let msg = InitMsg {};
         let env = mock_env(&deps.api, "creator", &coins(2, "token"));
@@ -183,7 +181,7 @@ mod tests {
 
     #[test]
     fn reflect_reject_empty_msgs() {
-        let mut deps = mock_dependencies(20, &[]);
+        let mut deps = mock_dependencies_with_custom_querier(20, &[]);
 
         let msg = InitMsg {};
         let env = mock_env(&deps.api, "creator", &coins(2, "token"));
@@ -206,7 +204,7 @@ mod tests {
 
     #[test]
     fn reflect_multiple_messages() {
-        let mut deps = mock_dependencies(20, &[]);
+        let mut deps = mock_dependencies_with_custom_querier(20, &[]);
 
         let msg = InitMsg {};
         let env = mock_env(&deps.api, "creator", &coins(2, "token"));
@@ -233,7 +231,7 @@ mod tests {
             .into(),
             StakingMsg::Delegate {
                 validator: HumanAddr::from("validator"),
-                amount: coin(100, "stake"),
+                amount: coin(100, "ustake"),
             }
             .into(),
         ];
@@ -247,7 +245,7 @@ mod tests {
 
     #[test]
     fn transfer() {
-        let mut deps = mock_dependencies(20, &[]);
+        let mut deps = mock_dependencies_with_custom_querier(20, &[]);
 
         let msg = InitMsg {};
         let env = mock_env(&deps.api, "creator", &coins(2, "token"));
@@ -262,14 +260,13 @@ mod tests {
 
         // should change state
         assert_eq!(0, res.messages.len());
-        let res = query(&deps, QueryMsg::Owner {}).unwrap();
-        let value: OwnerResponse = from_binary(&res).unwrap();
+        let value = query_owner(&deps).unwrap();
         assert_eq!("friend", value.owner.as_str());
     }
 
     #[test]
     fn transfer_requires_owner() {
-        let mut deps = mock_dependencies(20, &[]);
+        let mut deps = mock_dependencies_with_custom_querier(20, &[]);
 
         let msg = InitMsg {};
         let env = mock_env(&deps.api, "creator", &coins(2, "token"));
@@ -290,17 +287,10 @@ mod tests {
 
     #[test]
     fn dispatch_custom_query() {
-        let deps = mock_dependencies(20, &[]);
+        let deps = mock_dependencies_with_custom_querier(20, &[]);
 
         // we don't even initialize, just trigger a query
-        let res = query(
-            &deps,
-            QueryMsg::ReflectCustom {
-                text: "demo one".to_string(),
-            },
-        )
-        .unwrap();
-        let value: CustomResponse = from_binary(&res).unwrap();
+        let value = query_reflect(&deps, "demo one".to_string()).unwrap();
         assert_eq!(value.msg, "DEMO ONE");
     }
 }

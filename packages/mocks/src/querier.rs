@@ -1,6 +1,4 @@
-use cosmwasm_std::testing::{
-    mock_dependencies as std_dependencies, MockApi, MockQuerier, MockStorage,
-};
+use cosmwasm_std::testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR};
 use cosmwasm_std::{
     from_slice, Coin, Decimal, Extern, FullDelegation, HumanAddr, Querier, QuerierResult,
     QueryRequest, SystemError, Validator,
@@ -15,13 +13,19 @@ pub fn mock_dependencies(
     canonical_length: usize,
     contract_balance: &[Coin],
 ) -> Extern<MockStorage, MockApi, TerraMockQuerier> {
-    let base = std_dependencies(canonical_length, contract_balance);
-    base.change_querier(TerraMockQuerier::new)
+    let contract_addr = HumanAddr::from(MOCK_CONTRACT_ADDR);
+    let custom_querier: TerraMockQuerier = TerraMockQuerier::new(
+        MockQuerier::new(&[(&contract_addr, contract_balance)]));
+
+    Extern {
+        storage: MockStorage::default(),
+        api: MockApi::new(canonical_length),
+        querier: custom_querier,
+    }
 }
 
-#[derive(Clone, Default)]
 pub struct TerraMockQuerier {
-    base: MockQuerier,
+    base: MockQuerier<TerraQueryWrapper>,
     swap: SwapQuerier,
     oracle: OracleQuerier,
     treasury: TreasuryQuerier,
@@ -64,7 +68,7 @@ impl TerraMockQuerier {
 }
 
 impl TerraMockQuerier {
-    pub fn new(base: MockQuerier) -> Self {
+    pub fn new(base: MockQuerier<TerraQueryWrapper>) -> Self {
         TerraMockQuerier {
             base,
             swap: SwapQuerier::default(),
@@ -89,7 +93,7 @@ impl TerraMockQuerier {
         validators: &[Validator],
         delegations: &[FullDelegation],
     ) {
-        self.base.with_staking(denom, validators, delegations)
+        self.base.update_staking(denom, validators, delegations)
     }
 
     pub fn with_market(&mut self, rates: &[(&str, &str, Decimal)], taxes: &[(&str, Decimal)]) {

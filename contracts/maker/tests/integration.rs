@@ -86,6 +86,7 @@ fn buy_limit() {
     let contract_addr = deps.api.human_address(&env.contract.address).unwrap();
     let msg = HandleMsg::Buy {
         limit: Some(Uint128(100)),
+        recipient: None,
     };
     let res: HandleResponse<TerraMsgWrapper> = handle(&mut deps, env, msg).unwrap();
 
@@ -94,7 +95,7 @@ fn buy_limit() {
     if let CosmosMsg::Custom(TerraMsgWrapper { route, msg_data }) = &res.messages[0] {
         assert_eq!(route, "market");
 
-        match &msg_data {
+        match msg_data {
             TerraMsg::Swap {
                 trader,
                 offer_coin,
@@ -104,6 +105,7 @@ fn buy_limit() {
                 assert_eq!(offer_coin, &coin(100, "ETH"));
                 assert_eq!(ask_denom, "BTC");
             }
+            _ => panic!("Should not enter here")
         }
     } else {
         panic!("Expected swap message, got: {:?}", &res.messages[0]);

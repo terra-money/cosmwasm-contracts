@@ -1,4 +1,4 @@
-use cosmwasm_std::{generic_err, to_binary, Decimal, QuerierResult};
+use cosmwasm_std::{StdError, to_binary, Decimal, QuerierResult};
 use std::collections::{BTreeMap, HashMap};
 
 use terra_bindings::{ExchangeRateResponse, ExchangeRatesResponse, TerraQuery, TobinTaxResponse};
@@ -48,7 +48,7 @@ impl OracleQuerier {
                 // proper error on not found, serialize result on found
                 let rate = self.rates.get(offer).and_then(|tree| tree.get(ask));
                 if rate.is_none() {
-                    return Ok(Err(generic_err(format!(
+                    return Ok(Err(StdError::generic_err(format!(
                         "No rate listed for {} to {}",
                         offer, ask
                     ))));

@@ -1,436 +1,312 @@
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-
 use cosmwasm_std::{
-    from_slice, generic_err, log, not_found, to_binary, to_vec, unauthorized, AllBalanceResponse,
-    Api, BankMsg, Binary, CanonicalAddr, Env, Extern, HandleResponse, HumanAddr, InitResponse,
-    Querier, QueryResponse, StdResult, Storage,
+    log, Api, BankMsg, Binary, CanonicalAddr, Coin, CosmosMsg, Env, Extern, HandleResponse,
+    HandleResult, InitResponse, InitResult, Querier, StdError, StdResult, Storage,
 };
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct InitMsg {
-    pub verifier: HumanAddr,
-    pub beneficiary: HumanAddr,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct State {
-    pub verifier: CanonicalAddr,
-    pub beneficiary: CanonicalAddr,
-    pub funder: CanonicalAddr,
-}
-
-// failure modes to help test wasmd, based on this comment
-// https://github.com/cosmwasm/wasmd/issues/8#issuecomment-576146751
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum HandleMsg {
-    /// Releasing all funds in the contract to the beneficiary. This is the only "proper" action of this demo contract.
-    Release {},
-    // Infinite loop to burn cpu cycles (only run when metering is enabled)
-    CpuLoop {},
-    // Infinite loop making storage calls (to test when their limit hits)
-    StorageLoop {},
-    /// Infinite loop reading and writing memory
-    MemoryLoop {},
-    /// Allocate large amounts of memory without consuming much gas
-    AllocateLargeMemory {},
-    // Trigger a panic to ensure framework handles gracefully
-    Panic {},
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum QueryMsg {
-    // returns a human-readable representation of the verifier
-    // use to ensure query path works in integration tests
-    Verifier {},
-    // This returns cosmwasm_std::AllBalanceResponse to demo use of the querier
-    OtherBalance { address: HumanAddr },
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct VerifierResponse {
-    pub verifier: HumanAddr,
-}
-
-pub static CONFIG_KEY: &[u8] = b"config";
+use crate::msg::{HandleMsg, InitMsg, QueryMsg};
+use crate::state::{config, config_read, State};
 
 pub fn init<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
     msg: InitMsg,
-) -> StdResult<InitResponse> {
-    deps.storage.set(
-        CONFIG_KEY,
-        &to_vec(&State {
-            verifier: deps.api.canonical_address(&msg.verifier)?,
-            beneficiary: deps.api.canonical_address(&msg.beneficiary)?,
-            funder: env.message.sender,
-        })?,
-    )?;
-    Ok(InitResponse::default())
+) -> InitResult {
+    let state = State {
+        arbiter: deps.api.canonical_address(&msg.arbiter)?,
+        recipient: deps.api.canonical_address(&msg.recipient)?,
+        source: env.message.sender.clone(),
+        end_height: msg.end_height,
+        end_time: msg.end_time,
+    };
+    if state.is_expired(&env) {
+        Err(StdError::generic_err("creating expired escrow"))
+    } else {
+        config(&mut deps.storage).save(&state)?;
+        Ok(InitResponse::default())
+    }
 }
 
 pub fn handle<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
     msg: HandleMsg,
-) -> StdResult<HandleResponse> {
+) -> HandleResult {
+    let state = config_read(&deps.storage).load()?;
     match msg {
-        HandleMsg::Release {} => do_release(deps, env),
-        HandleMsg::CpuLoop {} => do_cpu_loop(),
-        HandleMsg::StorageLoop {} => do_storage_loop(deps),
-        HandleMsg::MemoryLoop {} => do_memory_loop(),
-        HandleMsg::AllocateLargeMemory {} => do_allocate_large_memory(),
-        HandleMsg::Panic {} => do_panic(),
+        HandleMsg::Approve { quantity } => try_approve(deps, env, state, quantity),
+        HandleMsg::Refund {} => try_refund(deps, env, state),
     }
 }
 
-fn do_release<S: Storage, A: Api, Q: Querier>(
+fn try_approve<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
-) -> StdResult<HandleResponse> {
-    let data = deps
-        .storage
-        .get(CONFIG_KEY)?
-        .ok_or_else(|| not_found("State"))?;
-    let state: State = from_slice(&data)?;
-
-    if env.message.sender == state.verifier {
-        let to_addr = deps.api.human_address(&state.beneficiary)?;
-        let from_addr = deps.api.human_address(&env.contract.address)?;
-        let balance = deps.querier.query_all_balances(&from_addr)?;
-
-        let res = HandleResponse {
-            log: vec![
-                log("action", "release"),
-                log("destination", to_addr.as_str()),
-            ],
-            messages: vec![BankMsg::Send {
-                from_address: from_addr,
-                to_address: to_addr,
-                amount: balance,
-            }
-            .into()],
-            data: None,
-        };
-        Ok(res)
+    state: State,
+    quantity: Option<Vec<Coin>>,
+) -> HandleResult {
+    if env.message.sender != state.arbiter {
+        Err(StdError::unauthorized())
+    } else if state.is_expired(&env) {
+        Err(StdError::generic_err("escrow expired"))
     } else {
-        Err(unauthorized())
+        let amount = if let Some(quantity) = quantity {
+            quantity
+        } else {
+            // release everything
+
+            let contract_address_human = deps.api.human_address(&env.contract.address)?;
+            // Querier guarantees to returns up-to-date data, including funds sent in this handle message
+            // https://github.com/CosmWasm/wasmd/blob/master/x/wasm/internal/keeper/keeper.go#L185-L192
+            deps.querier.query_all_balances(contract_address_human)?
+        };
+
+        send_tokens(
+            &deps.api,
+            &env.contract.address,
+            &state.recipient,
+            amount,
+            "approve",
+        )
     }
 }
 
-fn do_cpu_loop() -> StdResult<HandleResponse> {
-    let mut counter = 0u64;
-    loop {
-        counter += 1;
-        if counter >= 9_000_000_000 {
-            counter = 0;
-        }
-    }
-}
-
-fn do_storage_loop<S: Storage, A: Api, Q: Querier>(
+fn try_refund<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
-) -> StdResult<HandleResponse> {
-    let mut test_case = 0u64;
-    loop {
-        deps.storage
-            .set(b"test.key", test_case.to_string().as_bytes())?;
-        test_case += 1;
+    env: Env,
+    state: State,
+) -> HandleResult {
+    // anyone can try to refund, as long as the contract is expired
+    if !state.is_expired(&env) {
+        Err(StdError::generic_err("escrow not yet expired"))
+    } else {
+        let contract_address_human = deps.api.human_address(&env.contract.address)?;
+        // Querier guarantees to returns up-to-date data, including funds sent in this handle message
+        // https://github.com/CosmWasm/wasmd/blob/master/x/wasm/internal/keeper/keeper.go#L185-L192
+        let balance = deps.querier.query_all_balances(contract_address_human)?;
+        send_tokens(
+            &deps.api,
+            &env.contract.address,
+            &state.source,
+            balance,
+            "refund",
+        )
     }
 }
 
-fn do_memory_loop() -> StdResult<HandleResponse> {
-    let mut data = vec![1usize];
-    loop {
-        // add one element
-        data.push((*data.last().expect("must not be empty")) + 1);
-    }
-}
+// this is a helper to move the tokens, so the business logic is easy to read
+fn send_tokens<A: Api>(
+    api: &A,
+    from_address: &CanonicalAddr,
+    to_address: &CanonicalAddr,
+    amount: Vec<Coin>,
+    action: &str,
+) -> HandleResult {
+    let from_human = api.human_address(from_address)?;
+    let to_human = api.human_address(to_address)?;
+    let log = vec![log("action", action), log("to", to_human.as_str())];
 
-fn do_allocate_large_memory() -> StdResult<HandleResponse> {
-    // We create memory pages explicitely since Rust's default allocator seems to be clever enough
-    // to not grow memory for unused capacity like `Vec::<u8>::with_capacity(100 * 1024 * 1024)`.
-    // Even with std::alloc::alloc the memory did now grow beyond 1.5 MiB.
-
-    #[cfg(target_arch = "wasm32")]
-    {
-        use core::arch::wasm32;
-        let pages = 1_600; // 100 MiB
-        let ptr = wasm32::memory_grow(0, pages);
-        if ptr == usize::max_value() {
-            return Err(generic_err("Error in memory.grow instruction"));
-        }
-        Ok(HandleResponse::default())
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    Err(generic_err("Unsupported architecture"))
-}
-
-fn do_panic() -> StdResult<HandleResponse> {
-    panic!("This page intentionally faulted");
+    let r = HandleResponse {
+        messages: vec![CosmosMsg::Bank(BankMsg::Send {
+            from_address: from_human,
+            to_address: to_human,
+            amount,
+        })],
+        log,
+        data: None,
+    };
+    Ok(r)
 }
 
 pub fn query<S: Storage, A: Api, Q: Querier>(
-    deps: &Extern<S, A, Q>,
+    _deps: &Extern<S, A, Q>,
     msg: QueryMsg,
-) -> StdResult<QueryResponse> {
-    match msg {
-        QueryMsg::Verifier {} => query_verifier(deps),
-        QueryMsg::OtherBalance { address } => query_other_balance(deps, address),
-    }
-}
-
-fn query_verifier<S: Storage, A: Api, Q: Querier>(
-    deps: &Extern<S, A, Q>,
-) -> StdResult<QueryResponse> {
-    let data = deps
-        .storage
-        .get(CONFIG_KEY)?
-        .ok_or_else(|| not_found("State"))?;
-    let state: State = from_slice(&data)?;
-    let addr = deps.api.human_address(&state.verifier)?;
-    Ok(Binary(to_vec(&VerifierResponse { verifier: addr })?))
-}
-
-fn query_other_balance<S: Storage, A: Api, Q: Querier>(
-    deps: &Extern<S, A, Q>,
-    address: HumanAddr,
-) -> StdResult<QueryResponse> {
-    let amount = deps.querier.query_all_balances(address)?;
-    to_binary(&AllBalanceResponse { amount })
+) -> StdResult<Binary> {
+    // this always returns error
+    match msg {}
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::testing::{
-        mock_dependencies, mock_dependencies_with_balances, mock_env, MOCK_CONTRACT_ADDR,
-    };
-    // import trait ReadonlyStorage to get access to read
-    use cosmwasm_std::{coins, from_binary, AllBalanceResponse, ReadonlyStorage, StdError};
-    use cosmwasm_storage::transactional_deps;
+    use cosmwasm_std::testing::{mock_dependencies, mock_env};
+    use cosmwasm_std::{coins, Api, HumanAddr, StdError};
+
+    fn init_msg_expire_by_height(height: u64) -> InitMsg {
+        InitMsg {
+            arbiter: HumanAddr::from("verifies"),
+            recipient: HumanAddr::from("benefits"),
+            end_height: Some(height),
+            end_time: None,
+        }
+    }
+
+    fn mock_env_height<A: Api>(
+        api: &A,
+        signer: &str,
+        sent: &[Coin],
+        height: u64,
+        time: u64,
+    ) -> Env {
+        let mut env = mock_env(api, signer, sent);
+        env.block.height = height;
+        env.block.time = time;
+        env
+    }
 
     #[test]
     fn proper_initialization() {
         let mut deps = mock_dependencies(20, &[]);
 
-        let verifier = HumanAddr(String::from("verifies"));
-        let beneficiary = HumanAddr(String::from("benefits"));
-        let creator = HumanAddr(String::from("creator"));
-        let expected_state = State {
-            verifier: deps.api.canonical_address(&verifier).unwrap(),
-            beneficiary: deps.api.canonical_address(&beneficiary).unwrap(),
-            funder: deps.api.canonical_address(&creator).unwrap(),
-        };
-
-        let msg = InitMsg {
-            verifier,
-            beneficiary,
-        };
-        let env = mock_env(&deps.api, creator.as_str(), &[]);
+        let msg = init_msg_expire_by_height(1000);
+        let env = mock_env_height(&deps.api, "creator", &coins(1000, "earth"), 876, 0);
         let res = init(&mut deps, env, msg).unwrap();
         assert_eq!(0, res.messages.len());
 
-        // it worked, let's check the state
-        let data = deps
-            .storage
-            .get(CONFIG_KEY)
-            .expect("error reading db")
-            .expect("no data stored");
-        let state: State = from_slice(&data).unwrap();
-        assert_eq!(state, expected_state);
-    }
-
-    #[test]
-    fn init_and_query() {
-        let mut deps = mock_dependencies(20, &[]);
-
-        let verifier = HumanAddr(String::from("verifies"));
-        let beneficiary = HumanAddr(String::from("benefits"));
-        let creator = HumanAddr(String::from("creator"));
-        let msg = InitMsg {
-            verifier: verifier.clone(),
-            beneficiary,
-        };
-        let env = mock_env(&deps.api, creator.as_str(), &[]);
-        let res = init(&mut deps, env, msg).unwrap();
-        assert_eq!(0, res.messages.len());
-
-        // now let's query
-        let query_response = query(&deps, QueryMsg::Verifier {}).unwrap();
-        assert_eq!(query_response.as_slice(), b"{\"verifier\":\"verifies\"}");
-    }
-
-    #[test]
-    fn querier_callbacks_work() {
-        let rich_addr = HumanAddr::from("foobar");
-        let rich_balance = coins(10000, "gold");
-        let deps = mock_dependencies_with_balances(20, &[(&rich_addr, &rich_balance)]);
-
-        // querying with balance gets the balance
-        let query_msg = QueryMsg::OtherBalance { address: rich_addr };
-        let query_response = query(&deps, query_msg).unwrap();
-        let bal: AllBalanceResponse = from_binary(&query_response).unwrap();
-        assert_eq!(bal.amount, rich_balance);
-
-        // querying other accounts gets none
-        let query_msg = QueryMsg::OtherBalance {
-            address: HumanAddr::from("someone else"),
-        };
-        let query_response = query(&deps, query_msg).unwrap();
-        let bal: AllBalanceResponse = from_binary(&query_response).unwrap();
-        assert_eq!(bal.amount, vec![]);
-    }
-
-    #[test]
-    fn checkpointing_works_on_contract() {
-        let mut deps = mock_dependencies(20, &coins(1000, "earth"));
-
-        let verifier = HumanAddr(String::from("verifies"));
-        let beneficiary = HumanAddr(String::from("benefits"));
-        let creator = HumanAddr(String::from("creator"));
-        let expected_state = State {
-            verifier: deps.api.canonical_address(&verifier).unwrap(),
-            beneficiary: deps.api.canonical_address(&beneficiary).unwrap(),
-            funder: deps.api.canonical_address(&creator).unwrap(),
-        };
-
-        // let's see if we can checkpoint on a contract
-        let res = transactional_deps(&mut deps, |deps| {
-            let msg = InitMsg {
-                verifier: verifier.clone(),
-                beneficiary: beneficiary.clone(),
-            };
-            let env = mock_env(&deps.api, creator.as_str(), &[]);
-
-            init(deps, env, msg)
-        })
-        .unwrap();
-        assert_eq!(0, res.messages.len());
-
-        // it worked, let's check the state
-        let data = deps
-            .storage
-            .get(CONFIG_KEY)
-            .expect("error reading db")
-            .expect("no data stored");
-        let state: State = from_slice(&data).unwrap();
-        assert_eq!(state, expected_state);
-    }
-
-    #[test]
-    fn handle_release_works() {
-        let mut deps = mock_dependencies(20, &[]);
-
-        // initialize the store
-        let creator = HumanAddr::from("creator");
-        let verifier = HumanAddr::from("verifies");
-        let beneficiary = HumanAddr::from("benefits");
-
-        let init_msg = InitMsg {
-            verifier: verifier.clone(),
-            beneficiary: beneficiary.clone(),
-        };
-        let init_amount = coins(1000, "earth");
-        let init_env = mock_env(&deps.api, creator.as_str(), &init_amount);
-        let contract_addr = deps.api.human_address(&init_env.contract.address).unwrap();
-        let init_res = init(&mut deps, init_env, init_msg).unwrap();
-        assert_eq!(init_res.messages.len(), 0);
-
-        // balance changed in init
-        deps.querier.update_balance(&contract_addr, init_amount);
-
-        // beneficiary can release it
-        let handle_env = mock_env(&deps.api, verifier.as_str(), &[]);
-        let handle_res = handle(&mut deps, handle_env, HandleMsg::Release {}).unwrap();
-        assert_eq!(handle_res.messages.len(), 1);
-        let msg = handle_res.messages.get(0).expect("no message");
+        // it worked, let's query the state
+        let state = config_read(&mut deps.storage).load().unwrap();
         assert_eq!(
-            msg,
-            &BankMsg::Send {
-                from_address: HumanAddr::from(MOCK_CONTRACT_ADDR),
-                to_address: beneficiary,
-                amount: coins(1000, "earth"),
+            state,
+            State {
+                arbiter: deps
+                    .api
+                    .canonical_address(&HumanAddr::from("verifies"))
+                    .unwrap(),
+                recipient: deps
+                    .api
+                    .canonical_address(&HumanAddr::from("benefits"))
+                    .unwrap(),
+                source: deps
+                    .api
+                    .canonical_address(&HumanAddr::from("creator"))
+                    .unwrap(),
+                end_height: Some(1000),
+                end_time: None,
             }
-            .into(),
-        );
-        assert_eq!(
-            handle_res.log,
-            vec![log("action", "release"), log("destination", "benefits"),],
         );
     }
 
     #[test]
-    fn handle_release_fails_for_wrong_sender() {
+    fn cannot_initialize_expired() {
+        let mut deps = mock_dependencies(20, &[]);
+
+        let msg = init_msg_expire_by_height(1000);
+        let env = mock_env_height(&deps.api, "creator", &coins(1000, "earth"), 1001, 0);
+        let res = init(&mut deps, env, msg);
+        match res.unwrap_err() {
+            StdError::GenericErr { msg, .. } => assert_eq!(msg, "creating expired escrow"),
+            e => panic!("unexpected error: {:?}", e),
+        }
+    }
+
+    #[test]
+    fn handle_approve() {
         let mut deps = mock_dependencies(20, &[]);
 
         // initialize the store
-        let creator = HumanAddr::from("creator");
-        let verifier = HumanAddr::from("verifies");
-        let beneficiary = HumanAddr::from("benefits");
-
-        let init_msg = InitMsg {
-            verifier: verifier.clone(),
-            beneficiary: beneficiary.clone(),
-        };
         let init_amount = coins(1000, "earth");
-        let init_env = mock_env(&deps.api, creator.as_str(), &init_amount);
+        let init_env = mock_env_height(&deps.api, "creator", &init_amount, 876, 0);
         let contract_addr = deps.api.human_address(&init_env.contract.address).unwrap();
-        let init_res = init(&mut deps, init_env, init_msg).unwrap();
-        assert_eq!(init_res.messages.len(), 0);
+        let msg = init_msg_expire_by_height(1000);
+        let init_res = init(&mut deps, init_env, msg).unwrap();
+        assert_eq!(0, init_res.messages.len());
 
         // balance changed in init
         deps.querier.update_balance(&contract_addr, init_amount);
 
         // beneficiary cannot release it
-        let handle_env = mock_env(&deps.api, beneficiary.as_str(), &[]);
-        let handle_res = handle(&mut deps, handle_env, HandleMsg::Release {});
+        let msg = HandleMsg::Approve { quantity: None };
+        let env = mock_env_height(&deps.api, "beneficiary", &[], 900, 0);
+        let handle_res = handle(&mut deps, env, msg.clone());
         match handle_res.unwrap_err() {
             StdError::Unauthorized { .. } => {}
-            _ => panic!("Expect unauthorized error"),
+            e => panic!("unexpected error: {:?}", e),
         }
 
-        // state should not change
-        let data = deps
-            .storage
-            .get(CONFIG_KEY)
-            .expect("error reading db")
-            .expect("no data stored");
-        let state: State = from_slice(&data).unwrap();
+        // verifier cannot release it when expired
+        let env = mock_env_height(&deps.api, "verifies", &[], 1100, 0);
+        let handle_res = handle(&mut deps, env, msg.clone());
+        match handle_res.unwrap_err() {
+            StdError::GenericErr { msg, .. } => assert_eq!(msg, "escrow expired"),
+            e => panic!("unexpected error: {:?}", e),
+        }
+
+        // complete release by verfier, before expiration
+        let env = mock_env_height(&deps.api, "verifies", &[], 999, 0);
+        let handle_res = handle(&mut deps, env, msg.clone()).unwrap();
+        assert_eq!(1, handle_res.messages.len());
+        let msg = handle_res.messages.get(0).expect("no message");
         assert_eq!(
-            state,
-            State {
-                verifier: deps.api.canonical_address(&verifier).unwrap(),
-                beneficiary: deps.api.canonical_address(&beneficiary).unwrap(),
-                funder: deps.api.canonical_address(&creator).unwrap(),
-            }
+            msg,
+            &CosmosMsg::Bank(BankMsg::Send {
+                from_address: HumanAddr::from("cosmos2contract"),
+                to_address: HumanAddr::from("benefits"),
+                amount: coins(1000, "earth"),
+            })
+        );
+
+        // partial release by verfier, before expiration
+        let partial_msg = HandleMsg::Approve {
+            quantity: Some(coins(500, "earth")),
+        };
+        let env = mock_env_height(&deps.api, "verifies", &[], 999, 0);
+        let handle_res = handle(&mut deps, env, partial_msg).unwrap();
+        assert_eq!(1, handle_res.messages.len());
+        let msg = handle_res.messages.get(0).expect("no message");
+        assert_eq!(
+            msg,
+            &CosmosMsg::Bank(BankMsg::Send {
+                from_address: HumanAddr::from("cosmos2contract"),
+                to_address: HumanAddr::from("benefits"),
+                amount: coins(500, "earth"),
+            })
         );
     }
 
     #[test]
-    #[should_panic(expected = "This page intentionally faulted")]
-    fn handle_panic() {
+    fn handle_refund() {
         let mut deps = mock_dependencies(20, &[]);
 
         // initialize the store
-        let verifier = HumanAddr(String::from("verifies"));
-        let beneficiary = HumanAddr(String::from("benefits"));
-        let creator = HumanAddr(String::from("creator"));
-
-        let init_msg = InitMsg {
-            verifier: verifier.clone(),
-            beneficiary: beneficiary.clone(),
-        };
-        let init_env = mock_env(&deps.api, creator.as_str(), &coins(1000, "earth"));
-        let init_res = init(&mut deps, init_env, init_msg).unwrap();
+        let init_amount = coins(1000, "earth");
+        let init_env = mock_env_height(&deps.api, "creator", &init_amount, 876, 0);
+        let contract_addr = deps.api.human_address(&init_env.contract.address).unwrap();
+        let msg = init_msg_expire_by_height(1000);
+        let init_res = init(&mut deps, init_env, msg).unwrap();
         assert_eq!(0, init_res.messages.len());
 
-        let handle_env = mock_env(&deps.api, beneficiary.as_str(), &[]);
-        // this should panic
-        let _ = handle(&mut deps, handle_env, HandleMsg::Panic {});
+        // balance changed in init
+        deps.querier.update_balance(&contract_addr, init_amount);
+
+        // cannot release when unexpired (height < end_height)
+        let msg = HandleMsg::Refund {};
+        let env = mock_env_height(&deps.api, "anybody", &[], 800, 0);
+        let handle_res = handle(&mut deps, env, msg.clone());
+        match handle_res.unwrap_err() {
+            StdError::GenericErr { msg, .. } => assert_eq!(msg, "escrow not yet expired"),
+            e => panic!("unexpected error: {:?}", e),
+        }
+
+        // cannot release when unexpired (height == end_height)
+        let msg = HandleMsg::Refund {};
+        let env = mock_env_height(&deps.api, "anybody", &[], 1000, 0);
+        let handle_res = handle(&mut deps, env, msg.clone());
+        match handle_res.unwrap_err() {
+            StdError::GenericErr { msg, .. } => assert_eq!(msg, "escrow not yet expired"),
+            e => panic!("unexpected error: {:?}", e),
+        }
+
+        // anyone can release after expiration
+        let env = mock_env_height(&deps.api, "anybody", &[], 1001, 0);
+        let handle_res = handle(&mut deps, env, msg.clone()).unwrap();
+        assert_eq!(1, handle_res.messages.len());
+        let msg = handle_res.messages.get(0).expect("no message");
+        assert_eq!(
+            msg,
+            &CosmosMsg::Bank(BankMsg::Send {
+                from_address: HumanAddr::from("cosmos2contract"),
+                to_address: HumanAddr::from("creator"),
+                amount: coins(1000, "earth"),
+            })
+        );
     }
 }

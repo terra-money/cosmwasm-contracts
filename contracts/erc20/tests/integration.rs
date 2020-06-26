@@ -20,7 +20,7 @@
 use cosmwasm_std::{from_slice, log, Env, HandleResponse, HumanAddr, InitResponse, Uint128};
 use cosmwasm_storage::{to_length_prefixed, to_length_prefixed_nested};
 use cosmwasm_vm::testing::{handle, init, mock_env, mock_instance, query};
-use cosmwasm_vm::{Api, ReadonlyStorage, Storage};
+use cosmwasm_vm::{Api, Storage};
 
 use cw_erc20::contract::{
     bytes_to_u128, Constants, KEY_CONSTANTS, KEY_TOTAL_SUPPLY, PREFIX_ALLOWANCES, PREFIX_BALANCES,
@@ -42,6 +42,7 @@ fn get_constants<S: Storage>(storage: &S) -> Constants {
     let data = storage
         .get(&key)
         .expect("error getting data")
+        .0
         .expect("no config data stored");
     from_slice(&data).expect("invalid data")
 }
@@ -51,11 +52,12 @@ fn get_total_supply<S: Storage>(storage: &S) -> u128 {
     let data = storage
         .get(&key)
         .expect("error getting data")
+        .0
         .expect("no decimals data stored");
     bytes_to_u128(&data).unwrap()
 }
 
-fn get_balance<S: ReadonlyStorage, A: Api>(api: &A, storage: &S, address: &HumanAddr) -> u128 {
+fn get_balance<S: Storage, A: Api>(api: &A, storage: &S, address: &HumanAddr) -> u128 {
     let address_key = api
         .canonical_address(address)
         .expect("canonical_address failed");
@@ -67,7 +69,7 @@ fn get_balance<S: ReadonlyStorage, A: Api>(api: &A, storage: &S, address: &Human
     read_u128(storage, &key)
 }
 
-fn get_allowance<S: ReadonlyStorage, A: Api>(
+fn get_allowance<S: Storage, A: Api>(
     api: &A,
     storage: &S,
     owner: &HumanAddr,
@@ -89,8 +91,8 @@ fn get_allowance<S: ReadonlyStorage, A: Api>(
 
 // Reads 16 byte storage value into u128
 // Returns zero if key does not exist. Errors if data found that is not 16 bytes
-fn read_u128<S: ReadonlyStorage>(store: &S, key: &[u8]) -> u128 {
-    let result = store.get(key).unwrap();
+fn read_u128<S: Storage>(store: &S, key: &[u8]) -> u128 {
+    let result = store.get(key).unwrap().0;
     match result {
         Some(data) => bytes_to_u128(&data).unwrap(),
         None => 0u128,

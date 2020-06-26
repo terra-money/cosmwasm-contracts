@@ -4,8 +4,8 @@ use std::convert::TryInto;
 
 use crate::msg::{AllowanceResponse, BalanceResponse, HandleMsg, InitMsg, QueryMsg};
 use cosmwasm_std::{
-    generic_err, log, to_binary, to_vec, Api, Binary, CanonicalAddr, Env, Extern, HandleResponse,
-    HumanAddr, InitResponse, Querier, ReadonlyStorage, StdResult, Storage, Uint128,
+    log, to_binary, to_vec, Api, Binary, CanonicalAddr, Env, Extern, HandleResponse, HumanAddr,
+    InitResponse, Querier, ReadonlyStorage, StdError, StdResult, Storage, Uint128,
 };
 use cosmwasm_storage::{PrefixedStorage, ReadonlyPrefixedStorage};
 
@@ -35,24 +35,24 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
         for row in msg.initial_balances {
             let raw_address = deps.api.canonical_address(&row.address)?;
             let amount_raw = row.amount.u128();
-            balances_store.set(raw_address.as_slice(), &amount_raw.to_be_bytes())?;
+            balances_store.set(raw_address.as_slice(), &amount_raw.to_be_bytes());
             total_supply += amount_raw;
         }
     }
 
     // Check name, symbol, decimals
     if !is_valid_name(&msg.name) {
-        return Err(generic_err(
+        return Err(StdError::generic_err(
             "Name is not in the expected format (3-30 UTF-8 bytes)",
         ));
     }
     if !is_valid_symbol(&msg.symbol) {
-        return Err(generic_err(
+        return Err(StdError::generic_err(
             "Ticker symbol is not in expected format [A-Z]{3,6}",
         ));
     }
     if msg.decimals > 18 {
-        return Err(generic_err("Decimals must not exceed 18"));
+        return Err(StdError::generic_err("Decimals must not exceed 18"));
     }
 
     let mut config_store = PrefixedStorage::new(PREFIX_CONFIG, &mut deps.storage);
@@ -61,8 +61,8 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
         symbol: msg.symbol,
         decimals: msg.decimals,
     })?;
-    config_store.set(KEY_CONSTANTS, &constants)?;
-    config_store.set(KEY_TOTAL_SUPPLY, &total_supply.to_be_bytes())?;
+    config_store.set(KEY_CONSTANTS, &constants);
+    config_store.set(KEY_TOTAL_SUPPLY, &total_supply.to_be_bytes());
 
     Ok(InitResponse::default())
 }
@@ -155,7 +155,7 @@ fn try_transfer_from<S: Storage, A: Api, Q: Querier>(
 
     let mut allowance = read_allowance(&deps.storage, &owner_address_raw, &spender_address_raw)?;
     if allowance < amount_raw {
-        return Err(generic_err(format!(
+        return Err(StdError::generic_err(format!(
             "Insufficient allowance: allowance={}, required={}",
             allowance, amount_raw
         )));
@@ -235,7 +235,7 @@ fn try_burn<S: Storage, A: Api, Q: Querier>(
     let mut account_balance = read_balance(&deps.storage, owner_address_raw)?;
 
     if account_balance < amount_raw {
-        return Err(generic_err(format!(
+        return Err(StdError::generic_err(format!(
             "insufficient funds to burn: balance={}, required={}",
             account_balance, amount_raw
         )));
@@ -243,18 +243,17 @@ fn try_burn<S: Storage, A: Api, Q: Querier>(
     account_balance -= amount_raw;
 
     let mut balances_store = PrefixedStorage::new(PREFIX_BALANCES, &mut deps.storage);
-    balances_store.set(owner_address_raw.as_slice(), &account_balance.to_be_bytes())?;
+    balances_store.set(owner_address_raw.as_slice(), &account_balance.to_be_bytes());
 
     let mut config_store = PrefixedStorage::new(PREFIX_CONFIG, &mut deps.storage);
     let data = config_store
         .get(KEY_TOTAL_SUPPLY)
-        .expect("could not read total supply")
         .expect("no total supply data stored");
     let mut total_supply = bytes_to_u128(&data).unwrap();
 
     total_supply -= amount_raw;
 
-    config_store.set(KEY_TOTAL_SUPPLY, &total_supply.to_be_bytes())?;
+    config_store.set(KEY_TOTAL_SUPPLY, &total_supply.to_be_bytes());
 
     let res = HandleResponse {
         messages: vec![],
@@ -282,17 +281,17 @@ fn perform_transfer<T: Storage>(
 
     let mut from_balance = read_u128(&balances_store, from.as_slice())?;
     if from_balance < amount {
-        return Err(generic_err(format!(
+        return Err(StdError::generic_err(format!(
             "Insufficient funds: balance={}, required={}",
             from_balance, amount
         )));
     }
     from_balance -= amount;
-    balances_store.set(from.as_slice(), &from_balance.to_be_bytes())?;
+    balances_store.set(from.as_slice(), &from_balance.to_be_bytes());
 
     let mut to_balance = read_u128(&balances_store, to.as_slice())?;
     to_balance += amount;
-    balances_store.set(to.as_slice(), &to_balance.to_be_bytes())?;
+    balances_store.set(to.as_slice(), &to_balance.to_be_bytes());
 
     Ok(())
 }
@@ -302,14 +301,14 @@ fn perform_transfer<T: Storage>(
 pub fn bytes_to_u128(data: &[u8]) -> StdResult<u128> {
     match data[0..16].try_into() {
         Ok(bytes) => Ok(u128::from_be_bytes(bytes)),
-        Err(_) => Err(generic_err("Corrupted data found. 16 byte expected.")),
+        Err(_) => Err(StdError::generic_err("Corrupted data found. 16 byte expected.")),
     }
 }
 
 // Reads 16 byte storage value into u128
 // Returns zero if key does not exist. Errors if data found that is not 16 bytes
 pub fn read_u128<S: ReadonlyStorage>(store: &S, key: &[u8]) -> StdResult<u128> {
-    let result = store.get(key)?;
+    let result = store.get(key);
     match result {
         Some(data) => bytes_to_u128(&data),
         None => Ok(0u128),
@@ -339,7 +338,7 @@ fn write_allowance<S: Storage>(
 ) -> StdResult<()> {
     let mut allowances_store = PrefixedStorage::new(PREFIX_ALLOWANCES, store);
     let mut owner_store = PrefixedStorage::new(owner.as_slice(), &mut allowances_store);
-    owner_store.set(spender.as_slice(), &amount.to_be_bytes())?;
+    owner_store.set(spender.as_slice(), &amount.to_be_bytes());
     Ok(())
 }
 

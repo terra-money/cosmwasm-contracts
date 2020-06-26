@@ -23,7 +23,6 @@ fn get_constants<S: Storage>(storage: &S) -> Constants {
     let config_storage = ReadonlyPrefixedStorage::new(PREFIX_CONFIG, storage);
     let data = config_storage
         .get(KEY_CONSTANTS)
-        .expect("error reading data")
         .expect("no config data stored");
     from_slice(&data).expect("invalid data")
 }
@@ -32,7 +31,6 @@ fn get_total_supply<S: Storage>(storage: &S) -> u128 {
     let config_storage = ReadonlyPrefixedStorage::new(PREFIX_CONFIG, storage);
     let data = config_storage
         .get(KEY_TOTAL_SUPPLY)
-        .expect("error reading data")
         .expect("no decimals data stored");
     return bytes_to_u128(&data).unwrap();
 }

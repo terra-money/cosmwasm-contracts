@@ -39,21 +39,21 @@
           "type": "object",
           "required": [
             "ask_denom",
+            "from_address",
             "offer_coin",
-            "receiver",
-            "trader"
+            "to_address"
           ],
           "properties": {
             "ask_denom": {
               "type": "string"
             },
+            "from_address": {
+              "$ref": "#/definitions/HumanAddr"
+            },
             "offer_coin": {
               "$ref": "#/definitions/Coin"
             },
-            "receiver": {
-              "$ref": "#/definitions/HumanAddr"
-            },
-            "trader": {
+            "to_address": {
               "$ref": "#/definitions/HumanAddr"
             }
           }

@@ -36,13 +36,13 @@ singlepass = ["cosmwasm-vm/default-singlepass"]
 
 [dependencies]
 terra-bindings = { path = "../../packages/bindings", version = "0.1.0" }
-cosmwasm-std = { version = "0.8.0", features = ["iterator"] }
-cosmwasm-storage = { version = "0.8.0", features = ["iterator"] }
+cosmwasm-std = { version = "0.9.0", features = ["iterator"] }
+cosmwasm-storage = { version = "0.9.0", features = ["iterator"] }
 schemars = "0.7"
 serde = { version = "1.0.103", default-features = false, features = ["derive"] }
 snafu = { version = "0.6.3" }
 
 [dev-dependencies]
 terra-mocks = { path = "../../packages/mocks", version = "0.1.0" }
-cosmwasm-vm = { version = "0.8.0", default-features=false, features = ["iterator"] }
-cosmwasm-schema = { version = "0.8.0" }
+cosmwasm-vm = { version = "0.9.0", default-features=false, features = ["iterator"] }
+cosmwasm-schema = { version = "0.9.0" }
