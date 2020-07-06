@@ -484,7 +484,7 @@ dependencies = [
  "schemars",
  "serde",
  "snafu",
- "terra-bindings",
+ "terra-bindings 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "terra-mocks",
 ]
 
@@ -870,13 +870,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "terra-bindings"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2d7ccb7465b68d557fe2191a9862613cc71c0c45ce091248bdb9b1c5a5b540d"
+dependencies = [
+ "cosmwasm-std",
+ "schemars",
+ "serde",
+]
+
+[[package]]
 name = "terra-mocks"
 version = "0.1.0"
 dependencies = [
  "cosmwasm-std",
  "schemars",
  "serde",
- "terra-bindings",
+ "terra-bindings 0.1.0",
 ]
 
 [[package]]
