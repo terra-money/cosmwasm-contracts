@@ -25,7 +25,7 @@ use cosmwasm_vm::testing::{
 };
 use cosmwasm_vm::{Api, Instance};
 
-use terra_bindings::{TerraMsg, TerraMsgWrapper};
+use terra_cosmwasm::{TerraMsg, TerraMsgWrapper};
 
 use maker::msg::{ConfigResponse, HandleMsg, InitMsg, QueryMsg};
 

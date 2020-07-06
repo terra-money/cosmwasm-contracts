@@ -35,7 +35,7 @@
       }
     },
     {
-      "description": "Reflect is used for developer integration tests on the go layer. This will cause the contract to make this query (which goes to the SDK), then return the result to the user. This can be used to test the query handlers full-stack in Go code.\n\nThere are many possible return values here, this will just return the raw bytes, the caller is required to know the proper response type (defined in terra_bindings)",
+      "description": "Reflect is used for developer integration tests on the go layer. This will cause the contract to make this query (which goes to the SDK), then return the result to the user. This can be used to test the query handlers full-stack in Go code.\n\nThere are many possible return values here, this will just return the raw bytes, the caller is required to know the proper response type (defined in terra_cosmwasm)",
       "type": "object",
       "required": [
         "reflect"

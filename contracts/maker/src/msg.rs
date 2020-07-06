@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::{Coin, HumanAddr, Uint128};
 
-use terra_bindings::TerraQueryWrapper;
+use terra_cosmwasm::TerraQueryWrapper;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InitMsg {
@@ -34,7 +34,7 @@ pub enum QueryMsg {
     /// to the user. This can be used to test the query handlers full-stack in Go code.
     ///
     /// There are many possible return values here, this will just return the raw bytes, the caller
-    /// is required to know the proper response type (defined in terra_bindings)
+    /// is required to know the proper response type (defined in terra_cosmwasm)
     Reflect { query: TerraQueryWrapper },
 }
 

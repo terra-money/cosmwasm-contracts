@@ -1,7 +1,7 @@
 use cosmwasm_std::{to_binary, Decimal, QuerierResult, Uint128};
 use std::collections::HashMap;
 
-use terra_bindings::{TaxCapResponse, TaxRateResponse, TerraQuery};
+use terra_cosmwasm::{TaxCapResponse, TaxRateResponse, TerraQuery};
 
 #[derive(Clone)]
 pub struct TreasuryQuerier {

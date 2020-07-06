@@ -1,7 +1,7 @@
 use cosmwasm_std::{StdError, to_binary, Coin, Decimal, QuerierResult};
 use std::collections::{BTreeMap, HashMap};
 
-use terra_bindings::{SwapResponse, TerraQuery};
+use terra_cosmwasm::{SwapResponse, TerraQuery};
 
 // use crate::oracle::rates_to_map;
 

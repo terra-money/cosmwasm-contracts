@@ -1,7 +1,7 @@
 // use cosmwasm_std::{StdError, to_binary, Decimal, QuerierResult};
 // use std::collections::{BTreeMap, HashMap};
 
-// use terra_bindings::{ExchangeRateResponse, ExchangeRatesResponse, TerraQuery, TobinTaxResponse};
+// use terra_cosmwasm::{ExchangeRateResponse, ExchangeRatesResponse, TerraQuery, TobinTaxResponse};
 
 // #[derive(Clone, Default)]
 // pub struct OracleQuerier {

@@ -5,7 +5,7 @@ use cosmwasm_std::{
 };
 
 use crate::{SwapQuerier, TreasuryQuerier};
-use terra_bindings::TerraQueryWrapper;
+use terra_cosmwasm::TerraQueryWrapper;
 
 /// mock_dependencies is a drop-in replacement for cosmwasm_std::testing::mock_dependencies
 /// this uses our CustomQuerier.

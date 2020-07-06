@@ -4,7 +4,7 @@ use cosmwasm_std::{
     log, to_binary, to_vec, Api, BankMsg, Binary, Coin, CosmosMsg, Env, Extern, HandleResponse,
     HumanAddr, InitResponse, Querier, QueryRequest, StdError, StdResult, Storage, Uint128,
 };
-use terra_bindings::{
+use terra_cosmwasm::{
     create_swap_msg, create_swap_send_msg, TerraMsgWrapper, TerraQuerier, TerraQueryWrapper,
 };
 
@@ -205,7 +205,7 @@ mod tests {
     use cosmwasm_std::testing::mock_env;
     use cosmwasm_std::{coin, coins, from_binary, CosmosMsg, Decimal, HumanAddr, StdError};
 
-    use terra_bindings::{TaxCapResponse, TaxRateResponse, TerraMsg, TerraQuery};
+    use terra_cosmwasm::{TaxCapResponse, TaxRateResponse, TerraMsg, TerraQuery};
     use terra_mocks::mock_dependencies;
 
     #[test]
