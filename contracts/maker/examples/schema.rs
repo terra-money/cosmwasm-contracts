@@ -4,7 +4,7 @@ use std::fs::create_dir_all;
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
 use maker::msg::{
-    ConfigResponse, ExchangeRateResponse, HandleMsg, InitMsg, QueryMsg, SimulateResponse,
+    ConfigResponse, HandleMsg, InitMsg, QueryMsg, SimulateResponse,
 };
 use maker::state::State;
 
@@ -19,6 +19,5 @@ fn main() {
     export_schema(&schema_for!(QueryMsg), &out_dir);
     export_schema(&schema_for!(State), &out_dir);
     export_schema(&schema_for!(ConfigResponse), &out_dir);
-    export_schema(&schema_for!(ExchangeRateResponse), &out_dir);
     export_schema(&schema_for!(SimulateResponse), &out_dir);
 }

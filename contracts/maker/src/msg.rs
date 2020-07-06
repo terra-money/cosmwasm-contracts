@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{Coin, Decimal, HumanAddr, Uint128};
+use cosmwasm_std::{Coin, HumanAddr, Uint128};
 
 use terra_bindings::TerraQueryWrapper;
 
@@ -27,8 +27,6 @@ pub enum HandleMsg {
 pub enum QueryMsg {
     /// Config returns the stored configuration state. Returns State
     Config {},
-    /// Exchange rate returns how many ASK we can get for 1 OFFER
-    ExchangeRate {},
     /// Simulate will try to sell the given number of tokens (denom must be either ask or offer, we trade for the other)
     Simulate { offer: Coin },
     /// Reflect is used for developer integration tests on the go layer.
@@ -38,14 +36,6 @@ pub enum QueryMsg {
     /// There are many possible return values here, this will just return the raw bytes, the caller
     /// is required to know the proper response type (defined in terra_bindings)
     Reflect { query: TerraQueryWrapper },
-}
-
-/// Returns rate of ASK/OFFER
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct ExchangeRateResponse {
-    pub rate: Decimal,
-    pub ask: String,
-    pub offer: String,
 }
 
 /// Returns how many coins we could BUY if we SELL the given amount

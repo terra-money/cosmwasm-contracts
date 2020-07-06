@@ -4,7 +4,7 @@ use cosmwasm_std::{
     QueryRequest, SystemError, Validator,
 };
 
-use crate::{OracleQuerier, SwapQuerier, TreasuryQuerier};
+use crate::{SwapQuerier, TreasuryQuerier};
 use terra_bindings::TerraQueryWrapper;
 
 /// mock_dependencies is a drop-in replacement for cosmwasm_std::testing::mock_dependencies
@@ -27,7 +27,6 @@ pub fn mock_dependencies(
 pub struct TerraMockQuerier {
     base: MockQuerier<TerraQueryWrapper>,
     swap: SwapQuerier,
-    oracle: OracleQuerier,
     treasury: TreasuryQuerier,
 }
 
@@ -54,8 +53,6 @@ impl TerraMockQuerier {
                 let route_str = route.as_str();
                 if route_str == "market" {
                     self.swap.query(query_data)
-                } else if route_str == "oracle" {
-                    self.oracle.query(query_data)
                 } else if route_str == "treasury" {
                     self.treasury.query(query_data)
                 } else {
@@ -72,7 +69,6 @@ impl TerraMockQuerier {
         TerraMockQuerier {
             base,
             swap: SwapQuerier::default(),
-            oracle: OracleQuerier::default(),
             treasury: TreasuryQuerier::default(),
         }
     }
@@ -96,25 +92,18 @@ impl TerraMockQuerier {
         self.base.update_staking(denom, validators, delegations)
     }
 
-    pub fn with_market(&mut self, rates: &[(&str, &str, Decimal)], taxes: &[(&str, Decimal)]) {
-        self.oracle = OracleQuerier::new(rates, taxes);
+    pub fn with_market(&mut self, rates: &[(&str, &str, Decimal)]) {
         self.swap = SwapQuerier::new(rates);
     }
 
     pub fn with_treasury(
         &mut self,
         tax_rate: Decimal,
-        tax_proceeds: &[Coin],
         tax_caps: &[(&str, u128)],
-        reward_rate: Decimal,
-        seigniorage_proceeds: u128,
     ) {
         self.treasury = TreasuryQuerier::new(
             tax_rate,
-            tax_proceeds,
             tax_caps,
-            reward_rate,
-            seigniorage_proceeds,
         );
     }
 }

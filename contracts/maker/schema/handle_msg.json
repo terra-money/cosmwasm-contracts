@@ -21,6 +21,16 @@
                   "type": "null"
                 }
               ]
+            },
+            "recipient": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/HumanAddr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           }
         }
@@ -45,6 +55,40 @@
                   "type": "null"
                 }
               ]
+            },
+            "recipient": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/HumanAddr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "Send the given amount of coins to target address",
+      "type": "object",
+      "required": [
+        "send"
+      ],
+      "properties": {
+        "send": {
+          "type": "object",
+          "required": [
+            "coin",
+            "recipient"
+          ],
+          "properties": {
+            "coin": {
+              "$ref": "#/definitions/Coin"
+            },
+            "recipient": {
+              "$ref": "#/definitions/HumanAddr"
             }
           }
         }
@@ -52,6 +96,24 @@
     }
   ],
   "definitions": {
+    "Coin": {
+      "type": "object",
+      "required": [
+        "amount",
+        "denom"
+      ],
+      "properties": {
+        "amount": {
+          "$ref": "#/definitions/Uint128"
+        },
+        "denom": {
+          "type": "string"
+        }
+      }
+    },
+    "HumanAddr": {
+      "type": "string"
+    },
     "Uint128": {
       "type": "string"
     }

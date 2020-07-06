@@ -3,11 +3,29 @@ use std::collections::{BTreeMap, HashMap};
 
 use terra_bindings::{SwapResponse, TerraQuery};
 
-use crate::oracle::rates_to_map;
+// use crate::oracle::rates_to_map;
 
 #[derive(Clone, Default)]
 pub struct SwapQuerier {
     rates: HashMap<String, BTreeMap<String, Decimal>>,
+}
+
+pub(crate) fn rates_to_map(
+    rates: &[(&str, &str, Decimal)],
+) -> HashMap<String, BTreeMap<String, Decimal>> {
+    let mut rate_map: HashMap<String, BTreeMap<String, Decimal>> = HashMap::new();
+    for (offer, ask, rate) in rates.iter() {
+        let offer = (*offer).to_string();
+        let ask = (*ask).to_string();
+        if let Some(sub_map) = rate_map.get_mut(&offer) {
+            sub_map.insert(ask, *rate);
+        } else {
+            let mut sub_map = BTreeMap::new();
+            sub_map.insert(ask, *rate);
+            rate_map.insert(offer, sub_map);
+        }
+    }
+    rate_map
 }
 
 impl SwapQuerier {

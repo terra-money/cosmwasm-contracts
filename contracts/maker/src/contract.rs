@@ -1,16 +1,15 @@
 use std::cmp::min;
 
 use cosmwasm_std::{
-    log, to_binary, to_vec, Api, BankMsg, Binary, Coin, CosmosMsg, Env,
-    Extern, HandleResponse, HumanAddr, InitResponse, Querier, QueryRequest, StdResult, Storage,
-    Uint128, StdError,
+    log, to_binary, to_vec, Api, BankMsg, Binary, Coin, CosmosMsg, Env, Extern, HandleResponse,
+    HumanAddr, InitResponse, Querier, QueryRequest, StdError, StdResult, Storage, Uint128,
 };
 use terra_bindings::{
     create_swap_msg, create_swap_send_msg, TerraMsgWrapper, TerraQuerier, TerraQueryWrapper,
 };
 
 use crate::msg::{
-    ConfigResponse, ExchangeRateResponse, HandleMsg, InitMsg, QueryMsg, SimulateResponse,
+    ConfigResponse, HandleMsg, InitMsg, QueryMsg, SimulateResponse,
 };
 use crate::state::{config, config_read, State};
 
@@ -150,7 +149,6 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
 ) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => query_config(deps),
-        QueryMsg::ExchangeRate {} => query_rate(deps),
         QueryMsg::Simulate { offer } => query_swap(deps, offer),
         QueryMsg::Reflect { query } => query_reflect(deps, query),
     }
@@ -162,17 +160,6 @@ fn query_config<S: Storage, A: Api, Q: Querier>(deps: &Extern<S, A, Q>) -> StdRe
         ask: state.ask,
         offer: state.offer,
         owner: deps.api.human_address(&state.owner)?,
-    };
-    to_binary(&resp)
-}
-
-fn query_rate<S: Storage, A: Api, Q: Querier>(deps: &Extern<S, A, Q>) -> StdResult<Binary> {
-    let state = config_read(&deps.storage).load()?;
-    let rate = TerraQuerier::new(&deps.querier).query_exchange_rate(&state.offer, &state.ask)?;
-    let resp = ExchangeRateResponse {
-        rate,
-        ask: state.ask,
-        offer: state.offer,
     };
     to_binary(&resp)
 }
@@ -218,11 +205,7 @@ mod tests {
     use cosmwasm_std::testing::mock_env;
     use cosmwasm_std::{coin, coins, from_binary, CosmosMsg, Decimal, HumanAddr, StdError};
 
-    use terra_bindings::{
-        ExchangeRateResponse as TerraExchangeRateResponse, ExchangeRatesResponse,
-        RewardsWeightResponse, SeigniorageProceedsResponse, TaxCapResponse, TaxProceedsResponse,
-        TaxRateResponse, TerraMsg, TerraQuery,
-    };
+    use terra_bindings::{TaxCapResponse, TaxRateResponse, TerraMsg, TerraQuery};
     use terra_mocks::mock_dependencies;
 
     #[test]
@@ -492,13 +475,9 @@ mod tests {
 
         // set mock treasury querier
         let tax_rate = Decimal::percent(2);
-        let tax_proceeds = vec![];
         let tax_caps = &[("SDT", 10u128), ("UST", 500u128)];
-        let reward_rate = Decimal::zero();
-        let seignorage = 777;
 
-        deps.querier
-            .with_treasury(tax_rate, &tax_proceeds, tax_caps, reward_rate, seignorage);
+        deps.querier.with_treasury(tax_rate, tax_caps);
 
         let msg = InitMsg {
             ask: "UST".into(),
@@ -542,13 +521,9 @@ mod tests {
 
         // set mock treasury querier
         let tax_rate = Decimal::percent(2);
-        let tax_proceeds = vec![];
         let tax_caps = &[("SDT", 10u128), ("UST", 500u128)];
-        let reward_rate = Decimal::zero();
-        let seignorage = 777;
 
-        deps.querier
-            .with_treasury(tax_rate, &tax_proceeds, tax_caps, reward_rate, seignorage);
+        deps.querier.with_treasury(tax_rate, tax_caps);
 
         let msg = InitMsg {
             ask: "UST".into(),
@@ -590,13 +565,10 @@ mod tests {
     fn basic_queries() {
         let mut deps = mock_dependencies(20, &[]);
         // set the exchange rates between ETH and BTC (and back)
-        deps.querier.with_market(
-            &[
-                ("ETH", "BTC", Decimal::percent(15)),
-                ("BTC", "ETH", Decimal::percent(666)),
-            ],
-            &[],
-        );
+        deps.querier.with_market(&[
+            ("ETH", "BTC", Decimal::percent(15)),
+            ("BTC", "ETH", Decimal::percent(666)),
+        ]);
 
         let msg = InitMsg {
             ask: "BTC".into(),
@@ -614,18 +586,6 @@ mod tests {
                 owner: HumanAddr::from("creator"),
                 ask: "BTC".to_string(),
                 offer: "ETH".to_string(),
-            }
-        );
-
-        // check the expected rate
-        let res = query(&mut deps, QueryMsg::ExchangeRate {}).unwrap();
-        let cfg: ExchangeRateResponse = from_binary(&res).unwrap();
-        assert_eq!(
-            cfg,
-            ExchangeRateResponse {
-                ask: "BTC".to_string(),
-                offer: "ETH".to_string(),
-                rate: Decimal::percent(15),
             }
         );
 
@@ -665,63 +625,13 @@ mod tests {
     }
 
     #[test]
-    fn query_exchange_rates() {
-        let mut deps = mock_dependencies(20, &[]);
-        // set the exchange rates between ETH and BTC (and back)
-        deps.querier.with_market(
-            &[
-                ("ETH", "BTC", Decimal::percent(15)),
-                ("BTC", "ETH", Decimal::percent(666)),
-                ("ETH", "ATOM", Decimal::percent(1234)),
-            ],
-            &[],
-        );
-
-        let msg = InitMsg {
-            ask: "BTC".into(),
-            offer: "ETH".into(),
-        };
-        let env = mock_env(&deps.api, "creator", &[]);
-        let _res = init(&mut deps, env, msg).unwrap();
-
-        // check the general exchange query
-        let rates_query = TerraQueryWrapper {
-            route: "oracle".to_string(),
-            query_data: TerraQuery::ExchangeRates {
-                offer: "ETH".to_string(),
-            },
-        };
-        let res = query(&mut deps, QueryMsg::Reflect { query: rates_query }).unwrap();
-        let rates: ExchangeRatesResponse = from_binary(&res).unwrap();
-        assert_eq!(2, rates.rates.len());
-        assert_eq!(
-            rates.rates[0],
-            TerraExchangeRateResponse {
-                rate: Decimal::percent(1234),
-                ask: "ATOM".to_string(),
-            }
-        );
-        assert_eq!(
-            rates.rates[1],
-            TerraExchangeRateResponse {
-                rate: Decimal::percent(15),
-                ask: "BTC".to_string(),
-            }
-        );
-    }
-
-    #[test]
     fn query_treasury() {
         let mut deps = mock_dependencies(20, &[]);
         // set the exchange rates between ETH and BTC (and back)
         let tax_rate = Decimal::percent(2);
-        let tax_proceeds = vec![coin(10, "ETH"), coin(20, "BTC")];
         let tax_caps = &[("ETH", 1000u128), ("BTC", 500u128)];
-        let reward = Decimal::permille(5);
-        let seignorage = 777;
 
-        deps.querier
-            .with_treasury(tax_rate, &tax_proceeds, tax_caps, reward, seignorage);
+        deps.querier.with_treasury(tax_rate, tax_caps);
 
         let msg = InitMsg {
             ask: "BTC".into(),
@@ -752,35 +662,5 @@ mod tests {
         let res = query(&mut deps, tax_cap_query).unwrap();
         let cap: TaxCapResponse = from_binary(&res).unwrap();
         assert_eq!(cap.cap, Uint128(1000));
-
-        let tax_proceeds_query = QueryMsg::Reflect {
-            query: TerraQueryWrapper {
-                route: "treasury".to_string(),
-                query_data: TerraQuery::TaxProceeds {},
-            },
-        };
-        let res = query(&mut deps, tax_proceeds_query).unwrap();
-        let proceeds: TaxProceedsResponse = from_binary(&res).unwrap();
-        assert_eq!(proceeds.proceeds, tax_proceeds);
-
-        let rewards_query = QueryMsg::Reflect {
-            query: TerraQueryWrapper {
-                route: "treasury".to_string(),
-                query_data: TerraQuery::RewardsWeight {},
-            },
-        };
-        let res = query(&mut deps, rewards_query).unwrap();
-        let rewards: RewardsWeightResponse = from_binary(&res).unwrap();
-        assert_eq!(rewards.weight, reward);
-
-        let seigniorage_query = QueryMsg::Reflect {
-            query: TerraQueryWrapper {
-                route: "treasury".to_string(),
-                query_data: TerraQuery::SeigniorageProceeds {},
-            },
-        };
-        let res = query(&mut deps, seigniorage_query).unwrap();
-        let proceeds: SeigniorageProceedsResponse = from_binary(&res).unwrap();
-        assert_eq!(proceeds.size, Uint128(seignorage));
     }
 }
