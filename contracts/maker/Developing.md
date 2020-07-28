@@ -106,7 +106,7 @@ to run it is this (in the root directory):
 docker run --rm -v "$(pwd)":/code \
   --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/contracts/maker/target \
   --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-  cosmwasm/rust-optimizer:0.8.0 ./contracts/maker
+  cosmwasm/rust-optimizer:0.9.0 ./contracts/maker
 ```
 
 We must mount the contract code to `/code`. You can use a absolute path instead

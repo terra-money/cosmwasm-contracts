@@ -23,7 +23,7 @@ use cosmwasm_std::{
 use cosmwasm_vm::testing::{
     handle, init, mock_dependencies, mock_env, query, MockApi, MockQuerier, MockStorage,
 };
-use cosmwasm_vm::{Api, Instance};
+use cosmwasm_vm::Instance;
 
 use terra_cosmwasm::{TerraMsg, TerraMsgWrapper};
 
@@ -56,7 +56,7 @@ fn proper_initialization() {
         ask: "BTC".into(),
         offer: "ETH".into(),
     };
-    let env = mock_env(&deps.api, "creator", &coins(1000, "earth"));
+    let env = mock_env("creator", &coins(1000, "earth"));
 
     // we can just call .unwrap() to assert this was a success
     let res: InitResponse<TerraMsg> = init(&mut deps, env, msg).unwrap();
@@ -78,12 +78,12 @@ fn buy_limit() {
         ask: "BTC".into(),
         offer: "ETH".into(),
     };
-    let env = mock_env(&deps.api, "creator", &coins(200, "ETH"));
+    let env = mock_env("creator", &coins(200, "ETH"));
     let _res: InitResponse<TerraMsgWrapper> = init(&mut deps, env, msg).unwrap();
 
     // we buy BTC with half the ETH
-    let env = mock_env(&deps.api, "creator", &[]);
-    let contract_addr = deps.api.human_address(&env.contract.address).unwrap();
+    let env = mock_env("creator", &[]);
+    let contract_addr = env.contract.address.clone();
     let msg = HandleMsg::Buy {
         limit: Some(Uint128(100)),
         recipient: None,

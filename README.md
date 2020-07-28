@@ -16,9 +16,9 @@ This allows us to compile all contracts with one command.
 The following contracts are available for use. You can view the source code under `src`
 and a precompiled wasm ready for deployment under `contract.wasm`. Take a look here:
 
-* [escrow](https://github.com/terra-project/cosmwasm-contracts/tree/master/contracts/escrow) - A basic escrow with timeout and partial release
-* [erc20](https://github.com/terra-project/cosmwasm-contracts/tree/master/contracts/erc20) - Basic implementation the erc20 interface for CosmWasm, as a base for token designers
-* [maker](https://github.com/terra-project/cosmwasm-contracts/tree/master/contracts/maker) - Example implementation to show terra-binding for CosmWasm
+* [escrow](./cosmwasm-examples/escrow) - A basic escrow with timeout and partial release
+* [erc20](./cosmwasm-examples/erc20) - Basic implementation the erc20 interface for CosmWasm, as a base for token designers
+* [maker](./contracts/maker) - Example implementation to show terra-binding for CosmWasm
 
 ## Development
 
@@ -51,7 +51,7 @@ rm contract.wasm
 docker run --rm -v $(pwd):/code \
   --mount type=volume,source=$(basename $(pwd))_cache,target=/code/target \
   --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-  confio/cosmwasm-opt:0.6.0
+  confio/cosmwasm-opt:0.9.0
 
 # verify output - these should be the same
 sha256sum contract.wasm

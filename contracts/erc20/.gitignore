@@ -1,6 +1,0 @@
-# Rust build system
-target/
-
-# IDE: IntelliJ IDEA
-.idea/
-*.iml

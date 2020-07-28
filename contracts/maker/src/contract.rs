@@ -21,7 +21,7 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
     let state = State {
         ask: msg.ask,
         offer: msg.offer,
-        owner: env.message.sender,
+        owner: deps.api.canonical_address(&env.message.sender)?,
     };
 
     config(&mut deps.storage).save(&state)?;
@@ -50,7 +50,7 @@ pub fn transfer<S: Storage, A: Api, Q: Querier>(
     let querier = TerraQuerier::new(&deps.querier);
     let tax_rate = querier.query_tax_rate()?;
     let tax_cap = querier.query_tax_cap(&coin.denom)?;
-    let from_addr = deps.api.human_address(&env.contract.address)?;
+    let from_addr = env.contract.address;
 
     let mut expected_tax: Uint128 = tax_rate * coin.amount;
     if expected_tax > tax_cap {
@@ -81,11 +81,11 @@ pub fn buy<S: Storage, A: Api, Q: Querier>(
     recipient: Option<HumanAddr>,
 ) -> StdResult<HandleResponse<TerraMsgWrapper>> {
     let state = config_read(&deps.storage).load()?;
-    if env.message.sender != state.owner {
+    if deps.api.canonical_address(&env.message.sender)? != state.owner {
         return Err(StdError::unauthorized());
     }
 
-    let contract_addr = deps.api.human_address(&env.contract.address)?;
+    let contract_addr = env.contract.address;
     let mut offer = deps.querier.query_balance(&contract_addr, &state.offer)?;
     if offer.amount == Uint128(0) {
         return Ok(HandleResponse::default());
@@ -115,11 +115,11 @@ pub fn sell<S: Storage, A: Api, Q: Querier>(
     recipient: Option<HumanAddr>,
 ) -> StdResult<HandleResponse<TerraMsgWrapper>> {
     let state = config_read(&deps.storage).load()?;
-    if env.message.sender != state.owner {
+    if deps.api.canonical_address(&env.message.sender)? != state.owner {
         return Err(StdError::unauthorized());
     }
 
-    let contract_addr = deps.api.human_address(&env.contract.address)?;
+    let contract_addr = env.contract.address;
     let mut sell = deps.querier.query_balance(&contract_addr, &state.ask)?;
     if sell.amount == Uint128(0) {
         return Ok(HandleResponse::default());
@@ -216,7 +216,7 @@ mod tests {
             ask: "BTC".into(),
             offer: "ETH".into(),
         };
-        let env = mock_env(&deps.api, "creator", &coins(1000, "earth"));
+        let env = mock_env("creator", &coins(1000, "earth"));
 
         // we can just call .unwrap() to assert this was a success
         let res = init(&mut deps, env, msg).unwrap();
@@ -238,12 +238,12 @@ mod tests {
             ask: "BTC".into(),
             offer: "ETH".into(),
         };
-        let env = mock_env(&deps.api, "creator", &coins(200, "ETH"));
+        let env = mock_env("creator", &coins(200, "ETH"));
         let _res = init(&mut deps, env, msg).unwrap();
 
         // we buy BTC with half the ETH
-        let env = mock_env(&deps.api, "creator", &[]);
-        let contract_addr = deps.api.human_address(&env.contract.address).unwrap();
+        let env = mock_env("creator", &[]);
+        let contract_addr = env.contract.address.clone();
         let msg = HandleMsg::Buy {
             limit: Some(Uint128(100)),
             recipient: None,
@@ -280,13 +280,13 @@ mod tests {
             ask: "BTC".into(),
             offer: "ETH".into(),
         };
-        let env = mock_env(&deps.api, "creator", &coins(200, "ETH"));
+        let env = mock_env("creator", &coins(200, "ETH"));
         let _res = init(&mut deps, env, msg).unwrap();
 
         // we buy BTC with half the ETH
-        let env = mock_env(&deps.api, "creator", &[]);
+        let env = mock_env("creator", &[]);
         let recipient = HumanAddr("addr0000".to_string());
-        let contract_addr = deps.api.human_address(&env.contract.address).unwrap();
+        let contract_addr = env.contract.address.clone();
         let msg = HandleMsg::Buy {
             limit: Some(Uint128(100)),
             recipient: Some(HumanAddr("addr0000".to_string())),
@@ -325,11 +325,11 @@ mod tests {
             ask: "BTC".into(),
             offer: "ETH".into(),
         };
-        let env = mock_env(&deps.api, "creator", &coins(200, "ETH"));
+        let env = mock_env("creator", &coins(200, "ETH"));
         let _res = init(&mut deps, env, msg).unwrap();
 
         // we buy BTC with half the ETH
-        let env = mock_env(&deps.api, "someone else", &[]);
+        let env = mock_env("someone else", &[]);
         let msg = HandleMsg::Buy {
             limit: Some(Uint128(100)),
             recipient: None,
@@ -348,12 +348,12 @@ mod tests {
             ask: "BTC".into(),
             offer: "ETH".into(),
         };
-        let env = mock_env(&deps.api, "creator", &[]);
+        let env = mock_env("creator", &[]);
         let _res = init(&mut deps, env, msg).unwrap();
 
         // we sell all the BTC (faked balance above)
-        let env = mock_env(&deps.api, "creator", &[]);
-        let contract_addr = deps.api.human_address(&env.contract.address).unwrap();
+        let env = mock_env("creator", &[]);
+        let contract_addr = env.contract.address.clone();
         let msg = HandleMsg::Sell {
             limit: None,
             recipient: None,
@@ -390,12 +390,12 @@ mod tests {
             ask: "BTC".into(),
             offer: "ETH".into(),
         };
-        let env = mock_env(&deps.api, "creator", &[]);
+        let env = mock_env("creator", &[]);
         let _res = init(&mut deps, env, msg).unwrap();
 
         // we sell all the BTC (faked balance above)
-        let env = mock_env(&deps.api, "creator", &[]);
-        let contract_addr = deps.api.human_address(&env.contract.address).unwrap();
+        let env = mock_env("creator", &[]);
+        let contract_addr = env.contract.address.clone();
         let recipient = HumanAddr("addr0000".to_string());
         let msg = HandleMsg::Sell {
             limit: None,
@@ -435,12 +435,12 @@ mod tests {
             ask: "BTC".into(),
             offer: "ETH".into(),
         };
-        let env = mock_env(&deps.api, "creator", &[]);
+        let env = mock_env("creator", &[]);
         let _res = init(&mut deps, env, msg).unwrap();
 
         // we sell all the BTC (faked balance above)
-        let env = mock_env(&deps.api, "creator", &[]);
-        let contract_addr = deps.api.human_address(&env.contract.address).unwrap();
+        let env = mock_env("creator", &[]);
+        let contract_addr = env.contract.address.clone();
         let msg = HandleMsg::Sell {
             limit: Some(Uint128(250)),
             recipient: None,
@@ -483,12 +483,12 @@ mod tests {
             ask: "UST".into(),
             offer: "SDT".into(),
         };
-        let env = mock_env(&deps.api, "creator", &coins(10000, "SDT"));
+        let env = mock_env("creator", &coins(10000, "SDT"));
         let _res = init(&mut deps, env, msg).unwrap();
 
         // we buy BTC with half the ETH
-        let env = mock_env(&deps.api, "creator", &[]);
-        let contract_addr = deps.api.human_address(&env.contract.address).unwrap();
+        let env = mock_env("creator", &[]);
+        let contract_addr = env.contract.address.clone();
         let receiver_addr = HumanAddr::from("receiver");
         let msg = HandleMsg::Send {
             coin: Coin {
@@ -529,12 +529,12 @@ mod tests {
             ask: "UST".into(),
             offer: "SDT".into(),
         };
-        let env = mock_env(&deps.api, "creator", &coins(10000, "SDT"));
+        let env = mock_env("creator", &coins(10000, "SDT"));
         let _res = init(&mut deps, env, msg).unwrap();
 
         // we buy BTC with half the ETH
-        let env = mock_env(&deps.api, "creator", &[]);
-        let contract_addr = deps.api.human_address(&env.contract.address).unwrap();
+        let env = mock_env("creator", &[]);
+        let contract_addr = env.contract.address.clone();
         let receiver_addr = HumanAddr::from("receiver");
         let msg = HandleMsg::Send {
             coin: Coin {
@@ -574,7 +574,7 @@ mod tests {
             ask: "BTC".into(),
             offer: "ETH".into(),
         };
-        let env = mock_env(&deps.api, "creator", &[]);
+        let env = mock_env("creator", &[]);
         let _res = init(&mut deps, env, msg).unwrap();
 
         // check the config
@@ -637,7 +637,7 @@ mod tests {
             ask: "BTC".into(),
             offer: "ETH".into(),
         };
-        let env = mock_env(&deps.api, "creator", &[]);
+        let env = mock_env("creator", &[]);
         let _res = init(&mut deps, env, msg).unwrap();
 
         // test all treasury functions
