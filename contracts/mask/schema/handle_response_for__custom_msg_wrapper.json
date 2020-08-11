@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "HandleResponse_for_CustomMsg",
+  "title": "HandleResponse_for_CustomMsgWrapper",
   "type": "object",
   "required": [
     "log",
@@ -26,7 +26,7 @@
     "messages": {
       "type": "array",
       "items": {
-        "$ref": "#/definitions/CosmosMsg_for_CustomMsg"
+        "$ref": "#/definitions/CosmosMsg_for_CustomMsgWrapper"
       }
     }
   },
@@ -84,7 +84,7 @@
         }
       }
     },
-    "CosmosMsg_for_CustomMsg": {
+    "CosmosMsg_for_CustomMsgWrapper": {
       "anyOf": [
         {
           "type": "object",
@@ -104,7 +104,7 @@
           ],
           "properties": {
             "custom": {
-              "$ref": "#/definitions/CustomMsg"
+              "$ref": "#/definitions/CustomMsgWrapper"
             }
           }
         },
@@ -157,6 +157,22 @@
           }
         }
       ]
+    },
+    "CustomMsgWrapper": {
+      "description": "CustomMsgWrapper is an override of CosmosMsg::Custom to show this works and can be extended in the contract",
+      "type": "object",
+      "required": [
+        "msg_data",
+        "route"
+      ],
+      "properties": {
+        "msg_data": {
+          "$ref": "#/definitions/CustomMsg"
+        },
+        "route": {
+          "type": "string"
+        }
+      }
     },
     "HumanAddr": {
       "type": "string"
