@@ -1,4 +1,4 @@
-use cosmwasm_std::{StdError, to_binary, Coin, Decimal, QuerierResult};
+use cosmwasm_std::{to_binary, Coin, Decimal, QuerierResult, StdError};
 use std::collections::{BTreeMap, HashMap};
 
 use terra_cosmwasm::{SwapResponse, TerraQuery};

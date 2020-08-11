@@ -14,8 +14,8 @@ pub fn mock_dependencies(
     contract_balance: &[Coin],
 ) -> Extern<MockStorage, MockApi, TerraMockQuerier> {
     let contract_addr = HumanAddr::from(MOCK_CONTRACT_ADDR);
-    let custom_querier: TerraMockQuerier = TerraMockQuerier::new(
-        MockQuerier::new(&[(&contract_addr, contract_balance)]));
+    let custom_querier: TerraMockQuerier =
+        TerraMockQuerier::new(MockQuerier::new(&[(&contract_addr, contract_balance)]));
 
     Extern {
         storage: MockStorage::default(),
@@ -96,14 +96,7 @@ impl TerraMockQuerier {
         self.swap = SwapQuerier::new(rates);
     }
 
-    pub fn with_treasury(
-        &mut self,
-        tax_rate: Decimal,
-        tax_caps: &[(&str, u128)],
-    ) {
-        self.treasury = TreasuryQuerier::new(
-            tax_rate,
-            tax_caps,
-        );
+    pub fn with_treasury(&mut self, tax_rate: Decimal, tax_caps: &[(&str, u128)]) {
+        self.treasury = TreasuryQuerier::new(tax_rate, tax_caps);
     }
 }

@@ -3,13 +3,9 @@ workflows:
   version: 2
   test:
     jobs:
-      - package_bindings
       - package_mocks
       - contract_maker
-      - contract_escrow
-      - contract_erc20
       - contract_mask
-      - contract_staking
 
 
 jobs:

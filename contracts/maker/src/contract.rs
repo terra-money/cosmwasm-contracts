@@ -8,9 +8,7 @@ use terra_cosmwasm::{
     create_swap_msg, create_swap_send_msg, TerraMsgWrapper, TerraQuerier, TerraQueryWrapper,
 };
 
-use crate::msg::{
-    ConfigResponse, HandleMsg, InitMsg, QueryMsg, SimulateResponse,
-};
+use crate::msg::{ConfigResponse, HandleMsg, InitMsg, QueryMsg, SimulateResponse};
 use crate::state::{config, config_read, State};
 
 pub fn init<S: Storage, A: Api, Q: Querier>(

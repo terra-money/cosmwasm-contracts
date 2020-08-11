@@ -3,9 +3,7 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
-use maker::msg::{
-    ConfigResponse, HandleMsg, InitMsg, QueryMsg, SimulateResponse,
-};
+use maker::msg::{ConfigResponse, HandleMsg, InitMsg, QueryMsg, SimulateResponse};
 use maker::state::State;
 
 fn main() {

@@ -105,7 +105,7 @@ fn buy_limit() {
                 assert_eq!(offer_coin, &coin(100, "ETH"));
                 assert_eq!(ask_denom, "BTC");
             }
-            _ => panic!("Should not enter here")
+            _ => panic!("Should not enter here"),
         }
     } else {
         panic!("Expected swap message, got: {:?}", &res.messages[0]);
