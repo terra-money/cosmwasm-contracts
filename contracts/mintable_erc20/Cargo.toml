@@ -1,11 +1,14 @@
 [package]
-name = "maker"
-version = "0.2.0"
-authors = ["Yun Yeo <YunSuk-Yeo@users.noreply.github.com>", "Ethan Frey <ethanfrey@users.noreply.github.com>"]
+name = "mintable-erc20"
+description = "A mintable ERC20 contract - An implementation of the mintable ERC20 token interface"
+version = "0.1.0"
+authors = ["Yun Yeo <yun@users.noreply.github.com>"]
 edition = "2018"
+license = "Apache-2.0"
+repository = "https://github.com/terra-project/b_luna"
 
 exclude = [
-  # Those files are cosmwasm-opt artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
+  # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
   "contract.wasm",
   "hash.txt",
 ]
@@ -35,14 +38,12 @@ cranelift = ["cosmwasm-vm/default-cranelift"]
 singlepass = ["cosmwasm-vm/default-singlepass"]
 
 [dependencies]
-terra-cosmwasm = "1.1.0"
-cosmwasm-std = { version = "0.10.1", features = ["iterator"] }
-cosmwasm-storage = { version = "0.10.1", features = ["iterator"] }
+cosmwasm-std = "0.10.1"
+cosmwasm-storage = "0.10.1"
 schemars = "0.7"
 serde = { version = "1.0.103", default-features = false, features = ["derive"] }
-snafu = { version = "0.6.3" }
+hex = "0.4"
 
 [dev-dependencies]
-terra-mocks = { path = "../../packages/mocks", version = "0.1.0" }
-cosmwasm-vm = { version = "0.10.1", default-features=false, features = ["iterator"] }
-cosmwasm-schema = { version = "0.10.1" }
+cosmwasm-vm = { version = "0.10.1", default-features = false }
+cosmwasm-schema = "0.10.1"
