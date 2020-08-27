@@ -24,13 +24,13 @@ use cosmwasm_storage::{to_length_prefixed, to_length_prefixed_nested};
 use cosmwasm_vm::testing::{handle, init, mock_env, mock_instance, query};
 use cosmwasm_vm::{Api, Storage};
 
-use mirror_erc20::contract::{
+use mintable_erc20::contract::{
     bytes_to_u128, Constants, KEY_CONSTANTS, KEY_MINTER, KEY_TOTAL_SUPPLY, PREFIX_ALLOWANCES,
     PREFIX_BALANCES, PREFIX_CONFIG,
 };
-use mirror_erc20::msg::{HandleMsg, InitMsg, InitialBalance, QueryMsg};
+use mintable_erc20::msg::{HandleMsg, InitMsg, InitialBalance, QueryMsg};
 
-static WASM: &[u8] = include_bytes!("../target/wasm32-unknown-unknown/release/mirror_erc20.wasm");
+static WASM: &[u8] = include_bytes!("../target/wasm32-unknown-unknown/release/mintable_erc20.wasm");
 
 fn mock_env_height(signer: &HumanAddr, height: u64, time: u64) -> Env {
     let mut env = mock_env(signer, &[]);

@@ -3,8 +3,8 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
-use mirror_erc20::contract::Constants;
-use mirror_erc20::msg::{AllowanceResponse, BalanceResponse, HandleMsg, InitMsg, QueryMsg};
+use mintable_erc20::contract::Constants;
+use mintable_erc20::msg::{AllowanceResponse, BalanceResponse, HandleMsg, InitMsg, QueryMsg};
 
 fn main() {
     let mut out_dir = current_dir().unwrap();

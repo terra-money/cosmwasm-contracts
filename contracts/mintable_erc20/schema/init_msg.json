@@ -5,8 +5,8 @@
   "required": [
     "decimals",
     "initial_balances",
+    "minter",
     "name",
-    "owner",
     "symbol"
   ],
   "properties": {
@@ -21,11 +21,11 @@
         "$ref": "#/definitions/InitialBalance"
       }
     },
+    "minter": {
+      "$ref": "#/definitions/HumanAddr"
+    },
     "name": {
       "type": "string"
-    },
-    "owner": {
-      "$ref": "#/definitions/HumanAddr"
     },
     "symbol": {
       "type": "string"

@@ -15,16 +15,16 @@ actual code of the tagged crate.
 
 ```sh
 cargo install cargo-download
-cargo download mirror-erc20==0.1.0 > crate.tar.gz
+cargo download mintable-erc20==0.1.0 > crate.tar.gz
 tar xzvf crate.tar.gz
-cd mirror-erc20-0.1.0
+cd mintable-erc20-0.1.0
 ```
 
 (alternate, simpler approach, but seems to be broken):
 
 ```sh
 cargo install cargo-clone
-cargo clone mirror-erc20 --vers 0.1.0
+cargo clone mintable-erc20 --vers 0.1.0
 ```
 
 ## Verifying Artifacts
