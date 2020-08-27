@@ -17,7 +17,7 @@ fn proper_initialization() {
     let mut deps = mock_dependencies(20, &[]);
 
     let msg = InitMsg {
-        staking_token: HumanAddr("mirror0000".to_string()),
+        staking_token: HumanAddr("staking0000".to_string()),
         roll_unit: Uint128(100000000u128),
         deposit_period: Uint128(86400u128),
         rewards_denom: "uusd".to_string(),
@@ -32,7 +32,7 @@ fn proper_initialization() {
     // it worked, let's query the state
     let value: ConfigResponse = query_config(&deps).unwrap();
     assert_eq!("addr0000", value.owner.as_str());
-    assert_eq!("mirror0000", value.staking_token.as_str());
+    assert_eq!("staking0000", value.staking_token.as_str());
     assert_eq!(Uint128(100000000u128), value.roll_unit);
     assert_eq!(86400u64, value.deposit_period);
     assert_eq!("uusd", value.rewards_denom.as_str());
@@ -43,7 +43,7 @@ fn update_config() {
     let mut deps = mock_dependencies(20, &[]);
 
     let msg = InitMsg {
-        staking_token: HumanAddr("mirror0000".to_string()),
+        staking_token: HumanAddr("staking0000".to_string()),
         roll_unit: Uint128(100000000u128),
         deposit_period: Uint128(86400u128),
         rewards_denom: "uusd".to_string(),
@@ -101,7 +101,7 @@ fn deposit() {
     let mut deps = mock_dependencies(20, &[]);
 
     let msg = InitMsg {
-        staking_token: HumanAddr("mirror0000".to_string()),
+        staking_token: HumanAddr("staking0000".to_string()),
         roll_unit: Uint128(100000000u128),
         deposit_period: Uint128(86400u128),
         rewards_denom: "uusd".to_string(),
@@ -130,7 +130,7 @@ fn deposit() {
     );
     assert_eq!(
         &CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: HumanAddr("mirror0000".to_string()),
+            contract_addr: HumanAddr("staking0000".to_string()),
             send: vec![],
             msg: to_binary(&TokenHandleMsg::TransferFrom {
                 owner: HumanAddr("addr0000".to_string()),
@@ -179,7 +179,7 @@ fn deposit() {
     );
     assert_eq!(
         &CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: HumanAddr("mirror0000".to_string()),
+            contract_addr: HumanAddr("staking0000".to_string()),
             send: vec![],
             msg: to_binary(&TokenHandleMsg::TransferFrom {
                 owner: HumanAddr("addr0000".to_string()),
@@ -206,7 +206,7 @@ fn withdraw() {
     let mut deps = mock_dependencies(20, &[]);
 
     let msg = InitMsg {
-        staking_token: HumanAddr("mirror0000".to_string()),
+        staking_token: HumanAddr("staking0000".to_string()),
         roll_unit: Uint128(100000000u128),
         deposit_period: Uint128(86400u128),
         rewards_denom: "uusd".to_string(),
@@ -242,7 +242,7 @@ fn withdraw() {
     );
     assert_eq!(
         &CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: HumanAddr("mirror0000".to_string()),
+            contract_addr: HumanAddr("staking0000".to_string()),
             send: vec![],
             msg: to_binary(&TokenHandleMsg::Transfer {
                 recipient: HumanAddr("addr0000".to_string()),
@@ -273,7 +273,7 @@ fn withdraw() {
     );
     assert_eq!(
         &CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: HumanAddr("mirror0000".to_string()),
+            contract_addr: HumanAddr("staking0000".to_string()),
             send: vec![],
             msg: to_binary(&TokenHandleMsg::Transfer {
                 recipient: HumanAddr("addr0000".to_string()),
@@ -298,7 +298,7 @@ fn distribute() {
     let mut deps = mock_dependencies(20, &[]);
 
     let msg = InitMsg {
-        staking_token: HumanAddr("mirror0000".to_string()),
+        staking_token: HumanAddr("staking0000".to_string()),
         roll_unit: Uint128(100000000u128),
         deposit_period: Uint128(86400u128),
         rewards_denom: "uusd".to_string(),
@@ -424,7 +424,7 @@ fn claim() {
     deps.querier.with_treasury(tax_rate, tax_caps);
 
     let msg = InitMsg {
-        staking_token: HumanAddr("mirror0000".to_string()),
+        staking_token: HumanAddr("staking0000".to_string()),
         roll_unit: Uint128(100000000u128),
         deposit_period: Uint128(86400u128),
         rewards_denom: "uusd".to_string(),
