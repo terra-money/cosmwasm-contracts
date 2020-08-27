@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InitMsg",
+  "type": "object",
+  "required": [
+    "deposit_period",
+    "rewards_denom",
+    "roll_unit",
+    "staking_token"
+  ],
+  "properties": {
+    "deposit_period": {
+      "$ref": "#/definitions/Uint128"
+    },
+    "rewards_denom": {
+      "type": "string"
+    },
+    "roll_unit": {
+      "$ref": "#/definitions/Uint128"
+    },
+    "staking_token": {
+      "$ref": "#/definitions/HumanAddr"
+    }
+  },
+  "definitions": {
+    "HumanAddr": {
+      "type": "string"
+    },
+    "Uint128": {
+      "type": "string"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ConfigResponse",
+  "type": "object",
+  "required": [
+    "deposit_period",
+    "owner",
+    "rewards_denom",
+    "roll_unit",
+    "staking_token"
+  ],
+  "properties": {
+    "deposit_period": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "owner": {
+      "$ref": "#/definitions/HumanAddr"
+    },
+    "rewards_denom": {
+      "type": "string"
+    },
+    "roll_unit": {
+      "$ref": "#/definitions/Uint128"
+    },
+    "staking_token": {
+      "$ref": "#/definitions/HumanAddr"
+    }
+  },
+  "definitions": {
+    "HumanAddr": {
+      "type": "string"
+    },
+    "Uint128": {
+      "type": "string"
+    }
+  }
+}
