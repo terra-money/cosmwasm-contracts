@@ -1,6 +1,6 @@
 # Roll Staking Contract
 
-The contract is for the purpose of distributing Terra native tokens(`ukrw`, `uusd`, `usdr`, `umnt`) to a dedicated token `T` stakers. The rewards are paid in proportion to the balance of `T` stakers. It introduces `roll` concept to reduce distribution cost. In the `roll` concept, the amount deposited by the user is divided and managed by `roll_unit`, and each dividen unit is called a `roll` (the remainder is ignored at distribution). 
+The contract is for the purpose of distributing Terra native tokens(`ukrw`, `uusd`, `usdr`, `umnt`) to a dedicated token `T` stakers. The rewards are paid in proportion to the balance of `T` stakers. It introduces `roll` concept that the amount deposited by a user is divided and managed by `roll_unit`, and each dividen unit is called a `roll` (the remainder is ignored at distribution). 
 
 It also introduces `deposit period` to simplify withdraw process, so each `roll` can receive rewards after `deposit period`.
 
@@ -80,7 +80,7 @@ It also introduces `deposit period` to simplify withdraw process, so each `roll`
 
 * Distribute
 
-    Only the contract owner can execute `distribute` operation. It will distribute specified amount of rewards token to stakers. It means before executing `distribute` opertion, a owner must send rewards token to this contract manually or throw other contract operation.
+    Only the contract owner can execute `distribute` operation. It will distribute specified amount of rewards token to stakers. It means before executing `distribute` opertion, a owner must send rewards token to this contract manually or through other contract operation.
     
     Due to the limation of floating point data type, the distribution amount can be left. 
 
