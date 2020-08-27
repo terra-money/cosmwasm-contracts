@@ -6,6 +6,8 @@ workflows:
       - package_mocks
       - contract_maker
       - contract_mask
+      - contract_mintable_erc20
+      - contract_roll_staking
 
 
 jobs:
