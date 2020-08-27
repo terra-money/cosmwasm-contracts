@@ -128,7 +128,7 @@ pub fn try_deposit<S: Storage, A: Api, Q: Querier>(
             send: vec![],
             msg: to_binary(&TokenHandleMsg::TransferFrom {
                 owner: env.message.sender.clone(),
-                recipient: env.contract.address.clone(),
+                recipient: env.contract.address,
                 amount,
             })?,
         })],
@@ -183,7 +183,7 @@ pub fn try_withdraw<S: Storage, A: Api, Q: Querier>(
             contract_addr: deps.api.human_address(&config.staking_token)?,
             send: vec![],
             msg: to_binary(&TokenHandleMsg::Transfer {
-                recipient: env.message.sender.clone(),
+                recipient: env.message.sender,
                 amount,
             })?,
         })],
@@ -210,7 +210,7 @@ pub fn try_claim<S: Storage, A: Api, Q: Querier>(
     let mut tax_amount: Uint128 = Uint128::zero();
     if !staker.collected_rewards.is_zero() {
         let collected_rewards_string = staker.collected_rewards.to_string();
-        let rewards: Vec<&str> = collected_rewards_string.split(".").collect();
+        let rewards: Vec<&str> = collected_rewards_string.split('.').collect();
         let integer_part: Uint128 = Uint128::try_from(rewards[0])?;
         let decimal_part: Decimal = if rewards.len() == 1 {
             Decimal::zero()
@@ -228,7 +228,7 @@ pub fn try_claim<S: Storage, A: Api, Q: Querier>(
 
         msgs.push(CosmosMsg::Bank(BankMsg::Send {
             from_address: env.contract.address.clone(),
-            to_address: env.message.sender.clone(),
+            to_address: env.message.sender,
             amount: vec![Coin {
                 denom: config.rewards_denom.to_string(),
                 amount: claimable_amount,
@@ -313,9 +313,10 @@ pub fn try_distribute<S: Storage, A: Api, Q: Querier>(
         staker.collected_rewards = staker.collected_rewards + rewards_per_roll;
     }
 
-    if !staker.address.is_empty() {
+    let staker_address = staker.address.clone();
+    if !staker_address.is_empty() {
         staker_store(&mut deps.storage).set(
-            &staker.address.clone().as_slice(),
+            &staker_address.as_slice(),
             &to_vec(&StakerState {
                 collected_rewards: staker.collected_rewards,
                 ..staker
