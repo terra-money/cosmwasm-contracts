@@ -459,10 +459,7 @@ fn claim() {
         &log("rewards", &(990000u32.to_string() + "uusd")),
         rewards_log,
     );
-    assert_eq!(
-        &log("tax", &(10000u32.to_string() + "uusd")),
-        tax_log,
-    );
+    assert_eq!(&log("tax", &(10000u32.to_string() + "uusd")), tax_log,);
 
     assert_eq!(
         &CosmosMsg::Bank(BankMsg::Send {
@@ -475,7 +472,6 @@ fn claim() {
         }),
         msg
     );
-    
     // claim tax cap test
     let msg = HandleMsg::Distribute {
         amount: Uint128::from(200000000u128),
@@ -495,10 +491,7 @@ fn claim() {
         &log("rewards", &(199000000u32.to_string() + "uusd")),
         rewards_log,
     );
-    assert_eq!(
-        &log("tax", &(1000000u32.to_string() + "uusd")),
-        tax_log,
-    );
+    assert_eq!(&log("tax", &(1000000u32.to_string() + "uusd")), tax_log,);
 
     assert_eq!(
         &CosmosMsg::Bank(BankMsg::Send {

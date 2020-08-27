@@ -36,7 +36,7 @@ pub enum HandleMsg {
     },
     Burn {
         amount: Uint128,
-        burner: HumanAddr
+        burner: HumanAddr,
     },
     Mint {
         amount: Uint128,
@@ -47,7 +47,7 @@ pub enum HandleMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    Minter{},
+    Minter {},
     Balance {
         address: HumanAddr,
     },

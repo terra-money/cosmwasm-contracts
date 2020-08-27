@@ -269,7 +269,7 @@ fn distribute_test() {
     );
 }
 
-// Skip integration check due to lack of custom querier 
+// Skip integration check due to lack of custom querier
 // #[test]
 // fn claim_test() {
 //     let mut deps = mock_instance(WASM, &[]);
