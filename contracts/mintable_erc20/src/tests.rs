@@ -1526,4 +1526,17 @@ mod query {
         let owner_res: MinterResponse = from_slice(&query_result.as_slice()).expect("invalid data");
         assert_eq!(owner_res.address, HumanAddr("minter0000".to_string()));
     }
+
+    #[test]
+    fn can_query_total_supply() {
+        let mut deps = mock_dependencies(CANONICAL_LENGTH, &[]);
+        let init_msg = make_init_msg();
+        let env1 = mock_env_height(&address(0), 450, 550);
+        let res = init(&mut deps, env1, init_msg).unwrap();
+        assert_eq!(0, res.messages.len());
+
+        let query_msg = QueryMsg::TotalSupply {};
+        let query_result = query(&deps, query_msg).unwrap();
+        assert_eq!(query_result.as_slice(), b"{\"total_supply\":\"66\"}");
+    }
 }

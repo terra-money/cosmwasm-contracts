@@ -4,6 +4,7 @@ use std::convert::TryInto;
 
 use crate::msg::{
     AllowanceResponse, BalanceResponse, HandleMsg, InitMsg, MinterResponse, QueryMsg,
+    TotalSupplyResposne,
 };
 use cosmwasm_std::{
     from_slice, log, to_binary, to_vec, Api, Binary, CanonicalAddr, Env, Extern, HandleResponse,
@@ -121,6 +122,15 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
             let out = to_binary(&AllowanceResponse {
                 allowance: Uint128::from(allowance),
             })?;
+            Ok(out)
+        }
+        QueryMsg::TotalSupply {} => {
+            let config_store = ReadonlyPrefixedStorage::new(PREFIX_CONFIG, &deps.storage);
+            let data = config_store
+                .get(KEY_TOTAL_SUPPLY)
+                .expect("no total supply data stored");
+            let total_supply: Uint128 = Uint128(bytes_to_u128(&data).unwrap());
+            let out = to_binary(&TotalSupplyResposne { total_supply })?;
             Ok(out)
         }
     }

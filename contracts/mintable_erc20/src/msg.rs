@@ -55,6 +55,7 @@ pub enum QueryMsg {
         owner: HumanAddr,
         spender: HumanAddr,
     },
+    TotalSupply {},
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
@@ -70,4 +71,9 @@ pub struct BalanceResponse {
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
 pub struct AllowanceResponse {
     pub allowance: Uint128,
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
+pub struct TotalSupplyResposne {
+    pub total_supply: Uint128,
 }
