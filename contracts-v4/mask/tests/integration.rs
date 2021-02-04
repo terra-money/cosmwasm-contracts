@@ -88,9 +88,8 @@ fn reflect_requires_owner() {
     };
     let info = mock_info("unauthorized", &[]);
     let res: ContractResult<HandleResponse<CustomMsgWrapper>> = handle(&mut deps, mock_env(), info, msg);
-    let msg = res.unwrap_err();
-    println!("{}", msg)
-    //assert_eq!(err.contains(), MaskError::Unauthorized)
+    let err = res.unwrap_err();
+    assert!(err.contains("Unauthorized"));
 }
 
 #[test]
@@ -128,7 +127,6 @@ fn transfer_requires_owner() {
         owner: new_owner.clone(),
     };
     let res: ContractResult<HandleResponse> = handle(&mut deps, mock_env(), info, msg);
-    let msg = res.unwrap_err();
-    println!("{}", msg);
-    //assert_eq!(err, MaskError::Unauthorized)
+    let err = res.unwrap_err();
+    assert!(err.contains("Unauthorized"));
 }

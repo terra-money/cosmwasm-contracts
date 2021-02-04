@@ -42,10 +42,8 @@ pub fn init(
         for row in msg.initial_balances {
             let raw_address = deps.api.canonical_address(&row.address)?;
             let amount_raw = row.amount.u128();
-            println!("address: {} -- amount {} ",raw_address,amount_raw);
             balances_store.set(raw_address.as_slice(), &amount_raw.to_be_bytes());
             total_supply += amount_raw;
-            println!("total supply {}", total_supply);
         }
     }
 
@@ -365,15 +363,12 @@ fn perform_transfer(
     from: &CanonicalAddr,
     to: &CanonicalAddr,
     amount: u128,
-) -> StdResult<()> {
+) -> Result<(), ContractError> {
     let mut balances_store = PrefixedStorage::new(store, PREFIX_BALANCES);
 
     let mut from_balance = read_u128_pre(&balances_store, from.as_slice())?;
     if from_balance < amount {
-        return Err(StdError::generic_err(format!(
-            "Insufficient funds: balance={}, required={}",
-            from_balance, amount
-        )));
+        return Err(ContractError::InsufficientFunds{});
     }
     from_balance -= amount;
     balances_store.set(from.as_slice(), &from_balance.to_be_bytes());
