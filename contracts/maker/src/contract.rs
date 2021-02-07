@@ -46,8 +46,8 @@ pub fn transfer<S: Storage, A: Api, Q: Querier>(
     to_addr: HumanAddr,
 ) -> StdResult<HandleResponse<TerraMsgWrapper>> {
     let querier = TerraQuerier::new(&deps.querier);
-    let tax_rate = querier.query_tax_rate()?;
-    let tax_cap = querier.query_tax_cap(&coin.denom)?;
+    let tax_rate = querier.query_tax_rate()?.rate;
+    let tax_cap = querier.query_tax_cap(&coin.denom)?.cap;
     let from_addr = env.contract.address;
 
     let mut expected_tax: Uint128 = tax_rate * coin.amount;
@@ -177,7 +177,7 @@ fn query_swap<S: Storage, A: Api, Q: Querier>(
             offer.denom
         )));
     };
-    let receive = TerraQuerier::new(&deps.querier).query_swap(offer.clone(), ask)?;
+    let receive = TerraQuerier::new(&deps.querier).query_swap(offer.clone(), ask)?.receive;
     let resp = SimulateResponse {
         sell: offer,
         buy: receive,

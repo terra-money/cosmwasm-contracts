@@ -221,8 +221,8 @@ pub fn try_claim<S: Storage, A: Api, Q: Querier>(
         claimable_amount = integer_part;
 
         let querier = TerraQuerier::new(&deps.querier);
-        let tax_rate = querier.query_tax_rate()?;
-        let tax_cap = querier.query_tax_cap(&config.rewards_denom)?;
+        let tax_rate = querier.query_tax_rate()?.rate;
+        let tax_cap = querier.query_tax_cap(&config.rewards_denom)?.cap;
         tax_amount = std::cmp::min(tax_rate * claimable_amount, tax_cap);
         claimable_amount = (claimable_amount - tax_amount)?;
 
