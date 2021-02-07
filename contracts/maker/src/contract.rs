@@ -177,7 +177,9 @@ fn query_swap<S: Storage, A: Api, Q: Querier>(
             offer.denom
         )));
     };
-    let receive = TerraQuerier::new(&deps.querier).query_swap(offer.clone(), ask)?.receive;
+    let receive = TerraQuerier::new(&deps.querier)
+        .query_swap(offer.clone(), ask)?
+        .receive;
     let resp = SimulateResponse {
         sell: offer,
         buy: receive,
@@ -203,7 +205,7 @@ mod tests {
     use cosmwasm_std::testing::mock_env;
     use cosmwasm_std::{coin, coins, from_binary, CosmosMsg, Decimal, HumanAddr, StdError};
 
-    use terra_cosmwasm::{TaxCapResponse, TaxRateResponse, TerraMsg, TerraQuery};
+    use terra_cosmwasm::{TaxCapResponse, TaxRateResponse, TerraMsg, TerraQuery, TerraRoute};
     use terra_mocks::mock_dependencies;
 
     #[test]
@@ -251,7 +253,7 @@ mod tests {
         // make sure we produce proper trade order
         assert_eq!(1, res.messages.len());
         if let CosmosMsg::Custom(TerraMsgWrapper { route, msg_data }) = &res.messages[0] {
-            assert_eq!(route, "market");
+            assert_eq!(route, &TerraRoute::Market);
 
             match &msg_data {
                 TerraMsg::Swap {
@@ -294,7 +296,7 @@ mod tests {
         // make sure we produce proper trade order
         assert_eq!(1, res.messages.len());
         if let CosmosMsg::Custom(TerraMsgWrapper { route, msg_data }) = &res.messages[0] {
-            assert_eq!(route, "market");
+            assert_eq!(route, &TerraRoute::Market);
 
             match &msg_data {
                 TerraMsg::SwapSend {
@@ -361,7 +363,7 @@ mod tests {
         // make sure we produce proper trade order
         assert_eq!(1, res.messages.len());
         if let CosmosMsg::Custom(TerraMsgWrapper { route, msg_data }) = &res.messages[0] {
-            assert_eq!(route, "market");
+            assert_eq!(route, &TerraRoute::Market);
 
             match &msg_data {
                 TerraMsg::Swap {
@@ -404,7 +406,7 @@ mod tests {
         // make sure we produce proper trade order
         assert_eq!(1, res.messages.len());
         if let CosmosMsg::Custom(TerraMsgWrapper { route, msg_data }) = &res.messages[0] {
-            assert_eq!(route, "market");
+            assert_eq!(route, &TerraRoute::Market);
 
             match &msg_data {
                 TerraMsg::SwapSend {
@@ -448,7 +450,7 @@ mod tests {
         // make sure we produce proper trade order
         assert_eq!(1, res.messages.len());
         if let CosmosMsg::Custom(TerraMsgWrapper { route, msg_data }) = &res.messages[0] {
-            assert_eq!(route, "market");
+            assert_eq!(route, &TerraRoute::Market);
 
             match &msg_data {
                 TerraMsg::Swap {
@@ -641,7 +643,7 @@ mod tests {
         // test all treasury functions
         let tax_rate_query = QueryMsg::Reflect {
             query: TerraQueryWrapper {
-                route: "treasury".to_string(),
+                route: TerraRoute::Treasury,
                 query_data: TerraQuery::TaxRate {},
             },
         };
@@ -651,7 +653,7 @@ mod tests {
 
         let tax_cap_query = QueryMsg::Reflect {
             query: TerraQueryWrapper {
-                route: "treasury".to_string(),
+                route: TerraRoute::Treasury,
                 query_data: TerraQuery::TaxCap {
                     denom: "ETH".to_string(),
                 },

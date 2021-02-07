@@ -5,7 +5,7 @@ use cosmwasm_std::{
 };
 
 use crate::{SwapQuerier, TreasuryQuerier};
-use terra_cosmwasm::TerraQueryWrapper;
+use terra_cosmwasm::{TerraQueryWrapper, TerraRoute};
 
 /// mock_dependencies is a drop-in replacement for cosmwasm_std::testing::mock_dependencies
 /// this uses our CustomQuerier.
@@ -49,16 +49,11 @@ impl Querier for TerraMockQuerier {
 impl TerraMockQuerier {
     pub fn handle_query(&self, request: &QueryRequest<TerraQueryWrapper>) -> QuerierResult {
         match &request {
-            QueryRequest::Custom(TerraQueryWrapper { route, query_data }) => {
-                let route_str = route.as_str();
-                if route_str == "market" {
-                    self.swap.query(query_data)
-                } else if route_str == "treasury" {
-                    self.treasury.query(query_data)
-                } else {
-                    panic!("DO NOT ENTER HERE")
-                }
-            }
+            QueryRequest::Custom(TerraQueryWrapper { route, query_data }) => match route {
+                TerraRoute::Market => self.swap.query(query_data),
+                TerraRoute::Treasury => self.treasury.query(query_data),
+                _ => panic!("DO NOT ENTER HERE"),
+            },
             _ => self.base.handle_query(request),
         }
     }
