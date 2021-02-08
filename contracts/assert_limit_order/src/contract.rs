@@ -5,6 +5,12 @@ use cosmwasm_std::{
 
 use crate::msg::{HandleMsg, InitMsg, QueryMsg};
 
+const DECIMAL_FRACTIONAL: Uint128 = Uint128(1_000_000_000u128);
+
+pub fn reverse_decimal(decimal: Decimal) -> Decimal {
+    Decimal::from_ratio(DECIMAL_FRACTIONAL, decimal * DECIMAL_FRACTIONAL)
+}
+
 pub fn init<S: Storage, A: Api, Q: Querier>(
     _deps: &mut Extern<S, A, Q>,
     _env: Env,
@@ -51,7 +57,7 @@ pub fn assert_limit_order<S: Storage, A: Api, Q: Querier>(
         .query_balance(&env.message.sender, ask_denom.as_str())?;
     let swap_return = (ask_cur_balance.amount - ask_prev_balance)?;
 
-    let expected_return = offer_amount * belief_price;
+    let expected_return = offer_amount * reverse_decimal(belief_price);
     let minimum_return = (expected_return - expected_return * slippage_tolerance)?;
     if swap_return < minimum_return {
         return Err(StdError::generic_err(

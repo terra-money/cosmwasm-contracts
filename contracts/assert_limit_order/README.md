@@ -6,7 +6,7 @@ This contract can be used to ensure that a `MsgSwap` results in the user receivi
 
 If the following condition is not satisfied:
 
-`(cur_balance - ask_prev_balance) > offer_amount * belief_price * (1 - slippage_tolerance)`
+`(cur_balance - ask_prev_balance) > offer_amount / belief_price * (1 - slippage_tolerance)`
 
 The entire transaction is aborted.
 
@@ -33,8 +33,8 @@ To use the Assert Limit Order contract, simply include a `MsgExecuteContract` AF
 
 | Chain ID       | Contract Address                               |
 | -------------- | ---------------------------------------------- |
-| `columbus-4`   | `terra1zt4dwd7s4mxrtdjhz7q9tqrlykp0p4fqq987jf` |
-| `tequila-0004` | `terra1q7cx44u3hk30pfz853catgx4v2x3aeltq3sklz` |
+| `columbus-4`   | `terra1pvsxxycauj2cacrc756f3cmrr82zzzh3e5404t` |
+| `tequila-0004` | `terra16jf973tppj8gy4t0dqlh8y3nx7erz296mg5k7v` |
 
 ### Example
 
