@@ -6,7 +6,7 @@ This contract can be used to ensure that a `MsgSwap` results in the user receivi
 
 If the following condition is not satisfied:
 
-`(cur_balance - ask_prev_balance) > offer_amount / belief_price * (1 - slippage_tolerance)`
+`SwapSimulation.receive < minimum_receive`
 
 The entire transaction is aborted.
 
@@ -18,11 +18,9 @@ The entire transaction is aborted.
 pub enum HandleMsg {
     /// Check the current balance is increased as much as expected
     AssertLimitOrder {
-        offer_amount: Uint128,
+        offer_amount: Coin,
         ask_denom: String,
-        ask_prev_balance: Uint128,
-        belief_price: Decimal,
-        slippage_tolerance: Decimal,
+        minimum_receive: Uint128,
     },
 }
 ```
@@ -33,14 +31,13 @@ To use the Assert Limit Order contract, simply include a `MsgExecuteContract` AF
 
 | Chain ID       | Contract Address                               |
 | -------------- | ---------------------------------------------- |
-| `columbus-4`   | `terra1pvsxxycauj2cacrc756f3cmrr82zzzh3e5404t` |
-| `tequila-0004` | `terra16jf973tppj8gy4t0dqlh8y3nx7erz296mg5k7v` |
+| `columbus-4`   | `terra1vs9jr7pxuqwct3j29lez3pfetuu8xmq7tk3lzk` |
+| `tequila-0004` | `terra1z3sf42ywpuhxdh78rr5vyqxpaxa0dx657x5trs` |
 
 ### Example
 
-- Swap `1000 LUNA` to UST with `1%` slippage_tolerance
-- Current Price: `2.6427 UST`
-- Current UST Balance: `50 UST`
+- Swap `1000 UST` to LUNA
+- Minimum Receive: `374.616869 LUNA`
 
 ### Terra.js
 
@@ -64,8 +61,8 @@ async function main(): Promise<void> {
   const mk = new MnemonicKey();
   const wallet = terra.wallet(mk);
 
-  const offerCoin = new Coin("uluna", "1000000000");
-  const askDenom = "uusd";
+  const offerCoin = new Coin("uusd", "1000000000");
+  const askDenom = "uluna";
 
   // swap 1000 LUNA to UST
   const swap = new MsgSwap(mk.key.address, offerCoin, askDenom);
@@ -76,17 +73,15 @@ async function main(): Promise<void> {
     assertLimitOrderContract,
     {
       assert_limit_order: {
-        offer_amount: offerCoin.amount.toString(),
+        offer_coin: offerCoin,
         ask_denom: askDenom,
-        ask_prev_balance: "50000000", // uusd balance prior (50 UST)
-        belief_price: "2.6427",
-        slippage_tolerance: "0.01",
+        minimum_receive: "374616869",
       },
     }
   );
 
   const tx = await wallet.createAndSignTx({
-    msgs: [swap, assertLimitOrder],
+    msgs: [assertLimitOrder, swap],
   });
 
   const txResult = await terra.tx.broadcast(tx);

@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{Decimal, Uint128};
+use cosmwasm_std::{Coin, Uint128};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InitMsg {}
@@ -11,11 +11,9 @@ pub struct InitMsg {}
 pub enum HandleMsg {
     /// Check the current balance is increased as much as expected
     AssertLimitOrder {
-        offer_amount: Uint128,
+        offer_coin: Coin,
         ask_denom: String,
-        ask_prev_balance: Uint128,
-        belief_price: Decimal,
-        slippage_tolerance: Decimal,
+        minimum_receive: Uint128,
     },
 }
 
