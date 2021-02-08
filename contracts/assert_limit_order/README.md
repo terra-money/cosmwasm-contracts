@@ -73,7 +73,10 @@ async function main(): Promise<void> {
     assertLimitOrderContract,
     {
       assert_limit_order: {
-        offer_coin: offerCoin,
+        offer_coin: {
+          denom: offerCoin.denom,
+          amount: offerCoin.amount.toString(),
+        },
         ask_denom: askDenom,
         minimum_receive: "374616869",
       },
