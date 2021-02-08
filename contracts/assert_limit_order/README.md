@@ -50,7 +50,7 @@ import {
   Coin,
 } from "@terra-money/terra.js";
 
-const assertLimitOrderContract = "terra1q7cx44u3hk30pfz853catgx4v2x3aeltq3sklz";
+const assertLimitOrderContract = "terra1z3sf42ywpuhxdh78rr5vyqxpaxa0dx657x5trs";
 
 async function main(): Promise<void> {
   const terra = new LCDClient({
