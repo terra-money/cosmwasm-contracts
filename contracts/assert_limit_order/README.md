@@ -27,7 +27,7 @@ pub enum HandleMsg {
 
 ## Usage
 
-To use the Assert Limit Order contract, simply include a `MsgExecuteContract` AFTER your `MsgSwap` within the SAME transaction.
+To use the Assert Limit Order contract, simply include a `MsgExecuteContract` BEFORE your `MsgSwap` within the SAME transaction.
 
 | Chain ID       | Contract Address                               |
 | -------------- | ---------------------------------------------- |
