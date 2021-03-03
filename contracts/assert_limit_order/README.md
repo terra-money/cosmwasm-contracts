@@ -27,7 +27,7 @@ pub enum HandleMsg {
 
 ## Usage
 
-To use the Assert Limit Order contract, simply include a `MsgExecuteContract` AFTER your `MsgSwap` within the SAME transaction.
+To use the Assert Limit Order contract, simply include a `MsgExecuteContract` BEFORE your `MsgSwap` within the SAME transaction.
 
 | Chain ID       | Contract Address                               |
 | -------------- | ---------------------------------------------- |
@@ -73,7 +73,10 @@ async function main(): Promise<void> {
     assertLimitOrderContract,
     {
       assert_limit_order: {
-        offer_coin: offerCoin,
+        offer_coin: {
+          denom: offerCoin.denom,
+          amount: offerCoin.amount.toString(),
+        },
         ask_denom: askDenom,
         minimum_receive: "374616869",
       },
