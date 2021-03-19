@@ -55,13 +55,14 @@ fn deduct_tax<S: Storage, A: Api, Q: Querier>(
             let tax_cap: Uint128 = (terra_querier.query_tax_cap(v.denom.to_string())?).cap;
 
             Ok(Coin {
-                amount: std::cmp::min(
-                    v.amount.multiply_ratio(
-                        DECIMAL_FRACTION,
-                        DECIMAL_FRACTION * tax_rate + DECIMAL_FRACTION,
-                    ),
-                    tax_cap,
-                ),
+                amount: (v.amount
+                    - std::cmp::min(
+                        v.amount.multiply_ratio(
+                            DECIMAL_FRACTION,
+                            DECIMAL_FRACTION * tax_rate + DECIMAL_FRACTION,
+                        ),
+                        tax_cap,
+                    ))?,
                 denom: v.denom,
             })
         })
