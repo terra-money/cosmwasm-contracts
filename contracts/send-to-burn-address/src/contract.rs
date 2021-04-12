@@ -1,51 +1,35 @@
 use cosmwasm_std::{
-    Api, BankMsg, Binary, Coin, CosmosMsg, Decimal, Env, Extern, HandleResponse, HumanAddr,
-    InitResponse, Querier, StdResult, Storage, Uint128,
+    BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Response,
+    StdResult, Uint128,
 };
 
-use crate::msg::{HandleMsg, InitMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use terra_cosmwasm::TerraQuerier;
 
-pub fn init<S: Storage, A: Api, Q: Querier>(
-    _deps: &mut Extern<S, A, Q>,
-    _env: Env,
-    _msg: InitMsg,
-) -> StdResult<InitResponse> {
-    Ok(InitResponse::default())
+pub fn instantiate(_deps: DepsMut, _env: Env, _info: MessageInfo, _msg: InstantiateMsg) -> StdResult<Response> {
+    Ok(Response::default())
 }
 
-pub fn handle<S: Storage, A: Api, Q: Querier>(
-    deps: &mut Extern<S, A, Q>,
-    env: Env,
-    msg: HandleMsg,
-) -> StdResult<HandleResponse> {
+pub fn execute(deps: DepsMut, env: Env, _info: MessageInfo, msg: ExecuteMsg) -> StdResult<Response> {
     match msg {
-        HandleMsg::SendToBurnAccount {} => send_to_burn_account(deps, env),
+        ExecuteMsg::SendToBurnAccount {} => send_to_burn_account(deps, env),
     }
 }
 
-fn send_to_burn_account<S: Storage, A: Api, Q: Querier>(
-    deps: &mut Extern<S, A, Q>,
-    env: Env,
-) -> StdResult<HandleResponse> {
+fn send_to_burn_account(deps: DepsMut, env: Env) -> StdResult<Response> {
     let balances: Vec<Coin> = deps.querier.query_all_balances(&env.contract.address)?;
     let amount = deduct_tax(deps, balances)?;
-    Ok(HandleResponse {
+    Ok(Response {
         messages: vec![CosmosMsg::Bank(BankMsg::Send {
-            from_address: env.contract.address,
-            to_address: HumanAddr::from("terra1sk06e3dyexuq4shw77y3dsv480xv42mq73anxu"),
+            to_address: "terra1sk06e3dyexuq4shw77y3dsv480xv42mq73anxu".to_string(),
             amount,
         })],
-        log: vec![],
-        data: None,
+        ..Response::default()
     })
 }
 
 static DECIMAL_FRACTION: Uint128 = Uint128(1_000_000_000_000_000_000u128);
-fn deduct_tax<S: Storage, A: Api, Q: Querier>(
-    deps: &mut Extern<S, A, Q>,
-    coins: Vec<Coin>,
-) -> StdResult<Vec<Coin>> {
+fn deduct_tax(deps: DepsMut, coins: Vec<Coin>) -> StdResult<Vec<Coin>> {
     let terra_querier = TerraQuerier::new(&deps.querier);
     let tax_rate: Decimal = (terra_querier.query_tax_rate()?).rate;
 
@@ -55,23 +39,23 @@ fn deduct_tax<S: Storage, A: Api, Q: Querier>(
             let tax_cap: Uint128 = (terra_querier.query_tax_cap(v.denom.to_string())?).cap;
 
             Ok(Coin {
-                amount: (v.amount
-                    - std::cmp::min(
-                        v.amount.multiply_ratio(
-                            DECIMAL_FRACTION,
-                            DECIMAL_FRACTION * tax_rate + DECIMAL_FRACTION,
-                        ),
-                        tax_cap,
-                    ))?,
+                amount: Uint128::from(
+                    v.amount.u128()
+                        - std::cmp::min(
+                            v.amount.multiply_ratio(
+                                DECIMAL_FRACTION,
+                                DECIMAL_FRACTION * tax_rate + DECIMAL_FRACTION,
+                            ),
+                            tax_cap,
+                        )
+                        .u128(),
+                ),
                 denom: v.denom,
             })
         })
         .collect()
 }
 
-pub fn query<S: Storage, A: Api, Q: Querier>(
-    _deps: &Extern<S, A, Q>,
-    _msg: QueryMsg,
-) -> StdResult<Binary> {
+pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
     Ok(Binary::default())
 }

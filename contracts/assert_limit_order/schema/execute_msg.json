@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExecuteMsg",
+  "anyOf": [
+    {
+      "description": "Check the current balance is increased as much as expected",
+      "type": "object",
+      "required": [
+        "assert_limit_order"
+      ],
+      "properties": {
+        "assert_limit_order": {
+          "type": "object",
+          "required": [
+            "ask_denom",
+            "minimum_receive",
+            "offer_coin"
+          ],
+          "properties": {
+            "ask_denom": {
+              "type": "string"
+            },
+            "minimum_receive": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "offer_coin": {
+              "$ref": "#/definitions/Coin"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "Coin": {
+      "type": "object",
+      "required": [
+        "amount",
+        "denom"
+      ],
+      "properties": {
+        "amount": {
+          "$ref": "#/definitions/Uint128"
+        },
+        "denom": {
+          "type": "string"
+        }
+      }
+    },
+    "Uint128": {
+      "type": "string"
+    }
+  }
+}

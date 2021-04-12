@@ -17,91 +17,99 @@
 //!      });
 //! 4. Anywhere you see query(&deps, ...) you must replace it with query(&mut deps, ...)
 
-use cosmwasm_std::{
-    coin, coins, from_binary, Coin, CosmosMsg, HandleResponse, InitResponse, Uint128,
-};
+use cosmwasm_std::{coin, coins, from_binary, CosmosMsg, Response, Uint128};
 use cosmwasm_vm::testing::{
-    handle, init, mock_dependencies, mock_env, query, MockApi, MockQuerier, MockStorage,
+    execute, instantiate, mock_env, mock_info, mock_instance_with_options, query,
+    MockInstanceOptions,
 };
-use cosmwasm_vm::Instance;
 
-use terra_cosmwasm::{TerraMsg, TerraMsgWrapper};
+use terra_cosmwasm::{TerraMsg, TerraMsgWrapper, TerraRoute};
 
-use maker::msg::{ConfigResponse, HandleMsg, InitMsg, QueryMsg};
+use maker::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
 
 // This line will test the output of cargo wasm
-static WASM: &[u8] = include_bytes!("../target/wasm32-unknown-unknown/release/maker.wasm");
+static WASM: &[u8] = include_bytes!("../../../target/wasm32-unknown-unknown/release/maker.wasm");
 // You can uncomment this line instead to test productionified build from cosmwasm-opt
 // static WASM: &[u8] = include_bytes!("../contract.wasm");
 
-const DEFAULT_GAS_LIMIT: u64 = 500_000;
-
-// TODO: improve the whole state of this
-pub fn mock_instance(
-    wasm: &[u8],
-    contract_balance: &[Coin],
-) -> Instance<MockStorage, MockApi, MockQuerier> {
-    // TODO: check_wasm is not exported from cosmwasm_vm
-    // let terra_features = features_from_csv("staking,terra");
-    // check_wasm(wasm, &terra_features).unwrap();
-    let deps = mock_dependencies(20, contract_balance);
-    Instance::from_code(wasm, deps, DEFAULT_GAS_LIMIT).unwrap()
-}
-
 #[test]
 fn proper_initialization() {
-    let mut deps = mock_instance(WASM, &[]);
+    let mut deps = mock_instance_with_options(
+        WASM,
+        MockInstanceOptions {
+            supported_features: [
+                "terra".to_string(),
+                "staking".to_string(),
+                "stargate".to_string(),
+            ]
+            .iter()
+            .cloned()
+            .collect(),
+            ..MockInstanceOptions::default()
+        },
+    );
 
-    let msg = InitMsg {
+    let msg = InstantiateMsg {
         ask: "BTC".into(),
         offer: "ETH".into(),
     };
-    let env = mock_env("creator", &coins(1000, "earth"));
+    let info = mock_info("creator", &coins(1000, "earth"));
 
     // we can just call .unwrap() to assert this was a success
-    let res: InitResponse<TerraMsg> = init(&mut deps, env, msg).unwrap();
+    let res: Response<TerraMsgWrapper> = instantiate(&mut deps, mock_env(), info, msg).unwrap();
     assert_eq!(0, res.messages.len());
 
     // it worked, let's query the state
-    let res = query(&mut deps, QueryMsg::Config {}).unwrap();
+    let res = query(&mut deps, mock_env(), QueryMsg::Config {}).unwrap();
     let value: ConfigResponse = from_binary(&res).unwrap();
     assert_eq!("BTC", value.ask.as_str());
     assert_eq!("ETH", value.offer.as_str());
-    assert_eq!("creator", value.owner.as_str());
+    assert_eq!("creator", value.owner.to_string().as_str());
 }
 
 #[test]
 fn buy_limit() {
-    let mut deps = mock_instance(WASM, &coins(200, "ETH"));
+    let mut deps = mock_instance_with_options(
+        WASM,
+        MockInstanceOptions {
+            supported_features: [
+                "terra".to_string(),
+                "staking".to_string(),
+                "stargate".to_string(),
+            ]
+            .iter()
+            .cloned()
+            .collect(),
+            contract_balance: Some(&coins(200, "ETH")),
+            ..MockInstanceOptions::default()
+        },
+    );
 
-    let msg = InitMsg {
+    let msg = InstantiateMsg {
         ask: "BTC".into(),
         offer: "ETH".into(),
     };
-    let env = mock_env("creator", &coins(200, "ETH"));
-    let _res: InitResponse<TerraMsgWrapper> = init(&mut deps, env, msg).unwrap();
+    let info = mock_info("creator", &coins(200, "ETH"));
+    let _res: Response<TerraMsgWrapper> = instantiate(&mut deps, mock_env(), info, msg).unwrap();
 
     // we buy BTC with half the ETH
-    let env = mock_env("creator", &[]);
-    let contract_addr = env.contract.address.clone();
-    let msg = HandleMsg::Buy {
+    let info = mock_info("creator", &[]);
+    let msg = ExecuteMsg::Buy {
         limit: Some(Uint128(100)),
         recipient: None,
     };
-    let res: HandleResponse<TerraMsgWrapper> = handle(&mut deps, env, msg).unwrap();
+    let res: Response<TerraMsgWrapper> = execute(&mut deps, mock_env(), info, msg).unwrap();
 
     // make sure we produce proper trade order
     assert_eq!(1, res.messages.len());
     if let CosmosMsg::Custom(TerraMsgWrapper { route, msg_data }) = &res.messages[0] {
-        assert_eq!(route, "market");
+        assert_eq!(route, &TerraRoute::Market);
 
         match msg_data {
             TerraMsg::Swap {
-                trader,
                 offer_coin,
                 ask_denom,
             } => {
-                assert_eq!(trader, &contract_addr);
                 assert_eq!(offer_coin, &coin(100, "ETH"));
                 assert_eq!(ask_denom, "BTC");
             }

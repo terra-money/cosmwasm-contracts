@@ -1,4 +1,4 @@
-use cosmwasm_std::{to_binary, Decimal, QuerierResult, Uint128};
+use cosmwasm_std::{to_binary, Decimal, QuerierResult, SystemResult, Uint128};
 use std::collections::HashMap;
 
 use terra_cosmwasm::{TaxCapResponse, TaxRateResponse, TerraQuery};
@@ -33,12 +33,12 @@ impl TreasuryQuerier {
                 let res = TaxRateResponse {
                     rate: self.tax_rate,
                 };
-                Ok(to_binary(&res))
+                SystemResult::Ok(to_binary(&res).into())
             }
             TerraQuery::TaxCap { denom } => {
                 let cap = self.tax_cap.get(denom).copied().unwrap_or_default();
                 let res = TaxCapResponse { cap };
-                Ok(to_binary(&res))
+                SystemResult::Ok(to_binary(&res).into())
             }
             _ => panic!("DO NOT ENTER HERE"),
         }

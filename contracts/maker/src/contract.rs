@@ -1,92 +1,99 @@
 use std::cmp::min;
 
 use cosmwasm_std::{
-    log, to_binary, to_vec, Api, BankMsg, Binary, Coin, CosmosMsg, Env, Extern, HandleResponse,
-    HumanAddr, InitResponse, Querier, QueryRequest, StdError, StdResult, Storage, Uint128,
+    attr, to_binary, to_vec, Addr, BankMsg, Binary, Coin, ContractResult, CosmosMsg, Deps, DepsMut,
+    Env, MessageInfo, QueryRequest, QueryResponse, Response, StdError, StdResult, SystemResult,
+    Uint128,
 };
 use terra_cosmwasm::{
     create_swap_msg, create_swap_send_msg, TerraMsgWrapper, TerraQuerier, TerraQueryWrapper,
 };
 
-use crate::msg::{ConfigResponse, HandleMsg, InitMsg, QueryMsg, SimulateResponse};
+use crate::errors::{MakerError, Unauthorized};
+use crate::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg, SimulateResponse};
 use crate::state::{config, config_read, State};
 
-pub fn init<S: Storage, A: Api, Q: Querier>(
-    deps: &mut Extern<S, A, Q>,
-    env: Env,
-    msg: InitMsg,
-) -> StdResult<InitResponse> {
+pub fn instantiate(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    msg: InstantiateMsg,
+) -> Result<Response<TerraMsgWrapper>, MakerError> {
     let state = State {
         ask: msg.ask,
         offer: msg.offer,
-        owner: deps.api.canonical_address(&env.message.sender)?,
+        owner: info.sender.into(),
     };
 
-    config(&mut deps.storage).save(&state)?;
+    config(deps.storage).save(&state)?;
 
-    Ok(InitResponse::default())
+    Ok(Response::default())
 }
 
-pub fn handle<S: Storage, A: Api, Q: Querier>(
-    deps: &mut Extern<S, A, Q>,
+pub fn execute(
+    deps: DepsMut,
     env: Env,
-    msg: HandleMsg,
-) -> StdResult<HandleResponse<TerraMsgWrapper>> {
+    info: MessageInfo,
+    msg: ExecuteMsg,
+) -> Result<Response<TerraMsgWrapper>, MakerError> {
     match msg {
-        HandleMsg::Buy { limit, recipient } => buy(deps, env, limit, recipient),
-        HandleMsg::Sell { limit, recipient } => sell(deps, env, limit, recipient),
-        HandleMsg::Send { coin, recipient } => transfer(deps, env, coin, recipient),
+        ExecuteMsg::Buy { limit, recipient } => buy(deps, env, info, limit, recipient),
+        ExecuteMsg::Sell { limit, recipient } => sell(deps, env, info, limit, recipient),
+        ExecuteMsg::Send { coin, recipient } => transfer(deps, env, info, coin, recipient),
     }
 }
 
-pub fn transfer<S: Storage, A: Api, Q: Querier>(
-    deps: &mut Extern<S, A, Q>,
-    env: Env,
+pub fn transfer(
+    deps: DepsMut,
+    _env: Env,
+    _info: MessageInfo,
     coin: Coin,
-    to_addr: HumanAddr,
-) -> StdResult<HandleResponse<TerraMsgWrapper>> {
+    to_addr: Addr,
+) -> Result<Response<TerraMsgWrapper>, MakerError> {
     let querier = TerraQuerier::new(&deps.querier);
     let tax_rate = querier.query_tax_rate()?.rate;
     let tax_cap = querier.query_tax_cap(&coin.denom)?.cap;
-    let from_addr = env.contract.address;
 
     let mut expected_tax: Uint128 = tax_rate * coin.amount;
     if expected_tax > tax_cap {
         expected_tax = tax_cap;
     }
 
-    let res = HandleResponse {
-        log: vec![log("action", "send"), log("destination", to_addr.as_str())],
+    let res = Response {
+        attributes: vec![
+            attr("action", "send"),
+            attr("destination", to_addr.to_string()),
+        ],
         messages: vec![BankMsg::Send {
-            from_address: from_addr,
-            to_address: to_addr,
+            to_address: to_addr.to_string(),
             amount: vec![Coin {
                 denom: coin.denom,
-                amount: (coin.amount - expected_tax)?,
+                amount: Uint128::from(coin.amount.u128() - expected_tax.u128()),
             }],
         }
         .into()],
-        data: None,
+        ..Response::default()
     };
 
     Ok(res)
 }
 
-pub fn buy<S: Storage, A: Api, Q: Querier>(
-    deps: &mut Extern<S, A, Q>,
+pub fn buy(
+    deps: DepsMut,
     env: Env,
+    info: MessageInfo,
     limit: Option<Uint128>,
-    recipient: Option<HumanAddr>,
-) -> StdResult<HandleResponse<TerraMsgWrapper>> {
-    let state = config_read(&deps.storage).load()?;
-    if deps.api.canonical_address(&env.message.sender)? != state.owner {
-        return Err(StdError::unauthorized());
+    recipient: Option<Addr>,
+) -> Result<Response<TerraMsgWrapper>, MakerError> {
+    let state = config_read(deps.storage).load()?;
+    if info.sender != state.owner {
+        return Err(Unauthorized {}.build());
     }
 
     let contract_addr = env.contract.address;
     let mut offer = deps.querier.query_balance(&contract_addr, &state.offer)?;
     if offer.amount == Uint128(0) {
-        return Ok(HandleResponse::default());
+        return Ok(Response::default());
     }
     if let Some(stop) = limit {
         offer.amount = min(offer.amount, stop);
@@ -94,33 +101,33 @@ pub fn buy<S: Storage, A: Api, Q: Querier>(
 
     let msg: CosmosMsg<TerraMsgWrapper>;
     if let Some(recipient) = recipient {
-        msg = create_swap_send_msg(contract_addr, recipient, offer, state.ask);
+        msg = create_swap_send_msg(recipient.to_string(), offer, state.ask);
     } else {
-        msg = create_swap_msg(contract_addr, offer, state.ask);
+        msg = create_swap_msg(offer, state.ask);
     }
 
-    Ok(HandleResponse {
+    Ok(Response {
         messages: vec![msg],
-        log: vec![],
-        data: None,
+        ..Response::default()
     })
 }
 
-pub fn sell<S: Storage, A: Api, Q: Querier>(
-    deps: &mut Extern<S, A, Q>,
+pub fn sell(
+    deps: DepsMut,
     env: Env,
+    info: MessageInfo,
     limit: Option<Uint128>,
-    recipient: Option<HumanAddr>,
-) -> StdResult<HandleResponse<TerraMsgWrapper>> {
-    let state = config_read(&deps.storage).load()?;
-    if deps.api.canonical_address(&env.message.sender)? != state.owner {
-        return Err(StdError::unauthorized());
+    recipient: Option<Addr>,
+) -> Result<Response<TerraMsgWrapper>, MakerError> {
+    let state = config_read(deps.storage).load()?;
+    if info.sender != state.owner {
+        return Err(Unauthorized {}.build());
     }
 
     let contract_addr = env.contract.address;
     let mut sell = deps.querier.query_balance(&contract_addr, &state.ask)?;
     if sell.amount == Uint128(0) {
-        return Ok(HandleResponse::default());
+        return Ok(Response::default());
     }
 
     if let Some(stop) = limit {
@@ -129,44 +136,37 @@ pub fn sell<S: Storage, A: Api, Q: Querier>(
 
     let msg: CosmosMsg<TerraMsgWrapper>;
     if let Some(recipient) = recipient {
-        msg = create_swap_send_msg(contract_addr, recipient, sell, state.offer);
+        msg = create_swap_send_msg(recipient.to_string(), sell, state.offer);
     } else {
-        msg = create_swap_msg(contract_addr, sell, state.offer);
+        msg = create_swap_msg(sell, state.offer);
     }
 
-    Ok(HandleResponse {
+    Ok(Response {
         messages: vec![msg],
-        log: vec![],
-        data: None,
+        ..Response::default()
     })
 }
 
-pub fn query<S: Storage, A: Api, Q: Querier>(
-    deps: &Extern<S, A, Q>,
-    msg: QueryMsg,
-) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<QueryResponse> {
     match msg {
-        QueryMsg::Config {} => query_config(deps),
-        QueryMsg::Simulate { offer } => query_swap(deps, offer),
-        QueryMsg::Reflect { query } => query_reflect(deps, query),
+        QueryMsg::Config {} => query_config(deps, env),
+        QueryMsg::Simulate { offer } => query_swap(deps, env, offer),
+        QueryMsg::Reflect { query } => query_reflect(deps, env, query),
     }
 }
 
-fn query_config<S: Storage, A: Api, Q: Querier>(deps: &Extern<S, A, Q>) -> StdResult<Binary> {
-    let state = config_read(&deps.storage).load()?;
+fn query_config(deps: Deps, _env: Env) -> StdResult<QueryResponse> {
+    let state = config_read(deps.storage).load()?;
     let resp = ConfigResponse {
         ask: state.ask,
         offer: state.offer,
-        owner: deps.api.human_address(&state.owner)?,
+        owner: Addr::unchecked(state.owner),
     };
     to_binary(&resp)
 }
 
-fn query_swap<S: Storage, A: Api, Q: Querier>(
-    deps: &Extern<S, A, Q>,
-    offer: Coin,
-) -> StdResult<Binary> {
-    let state = config_read(&deps.storage).load()?;
+fn query_swap(deps: Deps, _env: Env, offer: Coin) -> StdResult<QueryResponse> {
+    let state = config_read(deps.storage).load()?;
     let ask = if offer.denom == state.ask {
         state.offer
     } else if offer.denom == state.offer {
@@ -187,68 +187,72 @@ fn query_swap<S: Storage, A: Api, Q: Querier>(
     to_binary(&resp)
 }
 
-fn query_reflect<S: Storage, A: Api, Q: Querier>(
-    deps: &Extern<S, A, Q>,
-    query: TerraQueryWrapper,
-) -> StdResult<Binary> {
+fn query_reflect(deps: Deps, _env: Env, query: TerraQueryWrapper) -> StdResult<Binary> {
     let request: QueryRequest<TerraQueryWrapper> = query.into();
     let raw_request = to_vec(&request)?;
-    deps.querier
-        .raw_query(&raw_request)
-        .map_err(|e| StdError::generic_err(format!("System error: {}", e)))?
+    match deps.querier.raw_query(&raw_request) {
+        SystemResult::Err(system_err) => Err(StdError::generic_err(format!(
+            "Querier system error: {}",
+            system_err
+        ))),
+        SystemResult::Ok(ContractResult::Err(contract_err)) => Err(StdError::generic_err(format!(
+            "Querier contract error: {}",
+            contract_err
+        ))),
+        SystemResult::Ok(ContractResult::Ok(value)) => Ok(value),
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::msg::ConfigResponse;
-    use cosmwasm_std::testing::mock_env;
-    use cosmwasm_std::{coin, coins, from_binary, CosmosMsg, Decimal, HumanAddr, StdError};
+    use cosmwasm_std::testing::{mock_env, mock_info};
+    use cosmwasm_std::{coin, coins, from_binary, Addr, CosmosMsg, Decimal};
 
     use terra_cosmwasm::{TaxCapResponse, TaxRateResponse, TerraMsg, TerraQuery, TerraRoute};
     use terra_mocks::mock_dependencies;
 
     #[test]
     fn proper_initialization() {
-        let mut deps = mock_dependencies(20, &[]);
+        let mut deps = mock_dependencies(&[]);
 
-        let msg = InitMsg {
+        let msg = InstantiateMsg {
             ask: "BTC".into(),
             offer: "ETH".into(),
         };
-        let env = mock_env("creator", &coins(1000, "earth"));
+        let info = mock_info("creator", &coins(1000, "earth"));
 
         // we can just call .unwrap() to assert this was a success
-        let res = init(&mut deps, env, msg).unwrap();
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
         assert_eq!(0, res.messages.len());
 
         // it worked, let's query the state
-        let res = query(&deps, QueryMsg::Config {}).unwrap();
+        let res = query(deps.as_ref(), mock_env(), QueryMsg::Config {}).unwrap();
         let value: ConfigResponse = from_binary(&res).unwrap();
         assert_eq!("BTC", value.ask.as_str());
         assert_eq!("ETH", value.offer.as_str());
-        assert_eq!("creator", value.owner.as_str());
+        assert_eq!("creator", value.owner.to_string().as_str());
     }
 
     #[test]
     fn buy_limit() {
-        let mut deps = mock_dependencies(20, &coins(200, "ETH"));
+        let mut deps = mock_dependencies(&coins(200, "ETH"));
 
-        let msg = InitMsg {
+        let msg = InstantiateMsg {
             ask: "BTC".into(),
             offer: "ETH".into(),
         };
-        let env = mock_env("creator", &coins(200, "ETH"));
-        let _res = init(&mut deps, env, msg).unwrap();
+        let info = mock_info("creator", &coins(200, "ETH"));
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         // we buy BTC with half the ETH
-        let env = mock_env("creator", &[]);
-        let contract_addr = env.contract.address.clone();
-        let msg = HandleMsg::Buy {
+        let info = mock_info("creator", &[]);
+        let msg = ExecuteMsg::Buy {
             limit: Some(Uint128(100)),
             recipient: None,
         };
-        let res = handle(&mut deps, env, msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         // make sure we produce proper trade order
         assert_eq!(1, res.messages.len());
@@ -257,11 +261,9 @@ mod tests {
 
             match &msg_data {
                 TerraMsg::Swap {
-                    trader,
                     offer_coin,
                     ask_denom,
                 } => {
-                    assert_eq!(trader, &contract_addr);
                     assert_eq!(offer_coin, &coin(100, "ETH"));
                     assert_eq!(ask_denom, "BTC");
                 }
@@ -274,24 +276,23 @@ mod tests {
 
     #[test]
     fn buy_send_limit() {
-        let mut deps = mock_dependencies(20, &coins(200, "ETH"));
+        let mut deps = mock_dependencies(&coins(200, "ETH"));
 
-        let msg = InitMsg {
+        let msg = InstantiateMsg {
             ask: "BTC".into(),
             offer: "ETH".into(),
         };
-        let env = mock_env("creator", &coins(200, "ETH"));
-        let _res = init(&mut deps, env, msg).unwrap();
+        let info = mock_info("creator", &coins(200, "ETH"));
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         // we buy BTC with half the ETH
-        let env = mock_env("creator", &[]);
-        let recipient = HumanAddr("addr0000".to_string());
-        let contract_addr = env.contract.address.clone();
-        let msg = HandleMsg::Buy {
+        let info = mock_info("creator", &[]);
+        let recipient = "addr0000".to_string();
+        let msg = ExecuteMsg::Buy {
             limit: Some(Uint128(100)),
-            recipient: Some(HumanAddr("addr0000".to_string())),
+            recipient: Some(Addr::unchecked("addr0000".to_string())),
         };
-        let res = handle(&mut deps, env, msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         // make sure we produce proper trade order
         assert_eq!(1, res.messages.len());
@@ -300,12 +301,10 @@ mod tests {
 
             match &msg_data {
                 TerraMsg::SwapSend {
-                    from_address,
                     to_address,
                     offer_coin,
                     ask_denom,
                 } => {
-                    assert_eq!(from_address, &contract_addr);
                     assert_eq!(to_address, &recipient);
                     assert_eq!(offer_coin, &coin(100, "ETH"));
                     assert_eq!(ask_denom, "BTC");
@@ -319,46 +318,45 @@ mod tests {
 
     #[test]
     fn only_owner_can_buy() {
-        let mut deps = mock_dependencies(20, &coins(200, "ETH"));
+        let mut deps = mock_dependencies(&coins(200, "ETH"));
 
-        let msg = InitMsg {
+        let msg = InstantiateMsg {
             ask: "BTC".into(),
             offer: "ETH".into(),
         };
-        let env = mock_env("creator", &coins(200, "ETH"));
-        let _res = init(&mut deps, env, msg).unwrap();
+        let info = mock_info("creator", &coins(200, "ETH"));
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         // we buy BTC with half the ETH
-        let env = mock_env("someone else", &[]);
-        let msg = HandleMsg::Buy {
+        let info = mock_info("someone else", &[]);
+        let msg = ExecuteMsg::Buy {
             limit: Some(Uint128(100)),
             recipient: None,
         };
-        match handle(&mut deps, env, msg).unwrap_err() {
-            StdError::Unauthorized { .. } => {}
+        match execute(deps.as_mut(), mock_env(), info, msg).unwrap_err() {
+            MakerError::Unauthorized { .. } => {}
             e => panic!("Expected unauthorized error, got: {}", e),
         }
     }
 
     #[test]
     fn sell_no_limit() {
-        let mut deps = mock_dependencies(20, &[coin(200, "ETH"), coin(120, "BTC")]);
+        let mut deps = mock_dependencies(&[coin(200, "ETH"), coin(120, "BTC")]);
 
-        let msg = InitMsg {
+        let msg = InstantiateMsg {
             ask: "BTC".into(),
             offer: "ETH".into(),
         };
-        let env = mock_env("creator", &[]);
-        let _res = init(&mut deps, env, msg).unwrap();
+        let info = mock_info("creator", &[]);
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         // we sell all the BTC (faked balance above)
-        let env = mock_env("creator", &[]);
-        let contract_addr = env.contract.address.clone();
-        let msg = HandleMsg::Sell {
+        let info = mock_info("creator", &[]);
+        let msg = ExecuteMsg::Sell {
             limit: None,
             recipient: None,
         };
-        let res = handle(&mut deps, env, msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         // make sure we produce proper trade order
         assert_eq!(1, res.messages.len());
@@ -367,11 +365,9 @@ mod tests {
 
             match &msg_data {
                 TerraMsg::Swap {
-                    trader,
                     offer_coin,
                     ask_denom,
                 } => {
-                    assert_eq!(trader, &contract_addr);
                     assert_eq!(offer_coin, &coin(120, "BTC"));
                     assert_eq!(ask_denom, "ETH");
                 }
@@ -384,24 +380,23 @@ mod tests {
 
     #[test]
     fn sell_send_no_limit() {
-        let mut deps = mock_dependencies(20, &[coin(200, "ETH"), coin(120, "BTC")]);
+        let mut deps = mock_dependencies(&[coin(200, "ETH"), coin(120, "BTC")]);
 
-        let msg = InitMsg {
+        let msg = InstantiateMsg {
             ask: "BTC".into(),
             offer: "ETH".into(),
         };
-        let env = mock_env("creator", &[]);
-        let _res = init(&mut deps, env, msg).unwrap();
+        let info = mock_info("creator", &[]);
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         // we sell all the BTC (faked balance above)
-        let env = mock_env("creator", &[]);
-        let contract_addr = env.contract.address.clone();
-        let recipient = HumanAddr("addr0000".to_string());
-        let msg = HandleMsg::Sell {
+        let info = mock_info("creator", &[]);
+        let recipient = Addr::unchecked("addr0000".to_string());
+        let msg = ExecuteMsg::Sell {
             limit: None,
-            recipient: Some(HumanAddr("addr0000".to_string())),
+            recipient: Some(recipient.clone()),
         };
-        let res = handle(&mut deps, env, msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         // make sure we produce proper trade order
         assert_eq!(1, res.messages.len());
@@ -410,12 +405,10 @@ mod tests {
 
             match &msg_data {
                 TerraMsg::SwapSend {
-                    from_address,
                     to_address,
                     offer_coin,
                     ask_denom,
                 } => {
-                    assert_eq!(from_address, &contract_addr);
                     assert_eq!(to_address, &recipient);
                     assert_eq!(offer_coin, &coin(120, "BTC"));
                     assert_eq!(ask_denom, "ETH");
@@ -429,23 +422,22 @@ mod tests {
 
     #[test]
     fn sell_limit_higher_than_balance() {
-        let mut deps = mock_dependencies(20, &[coin(200, "ETH"), coin(133, "BTC")]);
+        let mut deps = mock_dependencies(&[coin(200, "ETH"), coin(133, "BTC")]);
 
-        let msg = InitMsg {
+        let msg = InstantiateMsg {
             ask: "BTC".into(),
             offer: "ETH".into(),
         };
-        let env = mock_env("creator", &[]);
-        let _res = init(&mut deps, env, msg).unwrap();
+        let info = mock_info("creator", &[]);
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         // we sell all the BTC (faked balance above)
-        let env = mock_env("creator", &[]);
-        let contract_addr = env.contract.address.clone();
-        let msg = HandleMsg::Sell {
+        let info = mock_info("creator", &[]);
+        let msg = ExecuteMsg::Sell {
             limit: Some(Uint128(250)),
             recipient: None,
         };
-        let res = handle(&mut deps, env, msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         // make sure we produce proper trade order
         assert_eq!(1, res.messages.len());
@@ -454,11 +446,9 @@ mod tests {
 
             match &msg_data {
                 TerraMsg::Swap {
-                    trader,
                     offer_coin,
                     ask_denom,
                 } => {
-                    assert_eq!(trader, &contract_addr);
                     assert_eq!(offer_coin, &coin(133, "BTC"));
                     assert_eq!(ask_denom, "ETH");
                 }
@@ -471,7 +461,7 @@ mod tests {
 
     #[test]
     fn send_with_tax() {
-        let mut deps = mock_dependencies(20, &coins(10000, "SDT"));
+        let mut deps = mock_dependencies(&coins(10000, "SDT"));
 
         // set mock treasury querier
         let tax_rate = Decimal::percent(2);
@@ -479,35 +469,28 @@ mod tests {
 
         deps.querier.with_treasury(tax_rate, tax_caps);
 
-        let msg = InitMsg {
+        let msg = InstantiateMsg {
             ask: "UST".into(),
             offer: "SDT".into(),
         };
-        let env = mock_env("creator", &coins(10000, "SDT"));
-        let _res = init(&mut deps, env, msg).unwrap();
+        let info = mock_info("creator", &coins(10000, "SDT"));
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         // we buy BTC with half the ETH
-        let env = mock_env("creator", &[]);
-        let contract_addr = env.contract.address.clone();
-        let receiver_addr = HumanAddr::from("receiver");
-        let msg = HandleMsg::Send {
+        let info = mock_info("creator", &[]);
+        let receiver_addr = Addr::unchecked("receiver");
+        let msg = ExecuteMsg::Send {
             coin: Coin {
                 denom: "SDT".to_string(),
                 amount: Uint128(10000),
             },
             recipient: receiver_addr.clone(),
         };
-        let res = handle(&mut deps, env, msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         // make sure we produce proper send with tax consideration
         assert_eq!(1, res.messages.len());
-        if let CosmosMsg::Bank(BankMsg::Send {
-            from_address,
-            to_address,
-            amount,
-        }) = &res.messages[0]
-        {
-            assert_eq!(from_address, &contract_addr);
+        if let CosmosMsg::Bank(BankMsg::Send { to_address, amount }) = &res.messages[0] {
             assert_eq!(to_address, &receiver_addr);
             assert_eq!(amount, &vec![coin(9990, "SDT")]);
         } else {
@@ -517,7 +500,7 @@ mod tests {
 
     #[test]
     fn send_with_capped_tax() {
-        let mut deps = mock_dependencies(20, &coins(10000, "SDT"));
+        let mut deps = mock_dependencies(&coins(10000, "SDT"));
 
         // set mock treasury querier
         let tax_rate = Decimal::percent(2);
@@ -525,35 +508,28 @@ mod tests {
 
         deps.querier.with_treasury(tax_rate, tax_caps);
 
-        let msg = InitMsg {
+        let msg = InstantiateMsg {
             ask: "UST".into(),
             offer: "SDT".into(),
         };
-        let env = mock_env("creator", &coins(10000, "SDT"));
-        let _res = init(&mut deps, env, msg).unwrap();
+        let info = mock_info("creator", &coins(10000, "SDT"));
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         // we buy BTC with half the ETH
-        let env = mock_env("creator", &[]);
-        let contract_addr = env.contract.address.clone();
-        let receiver_addr = HumanAddr::from("receiver");
-        let msg = HandleMsg::Send {
+        let info = mock_info("creator", &[]);
+        let receiver_addr = Addr::unchecked("receiver");
+        let msg = ExecuteMsg::Send {
             coin: Coin {
                 denom: "SDT".to_string(),
                 amount: Uint128(50),
             },
             recipient: receiver_addr.clone(),
         };
-        let res = handle(&mut deps, env, msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         // make sure tax is capped
         assert_eq!(1, res.messages.len());
-        if let CosmosMsg::Bank(BankMsg::Send {
-            from_address,
-            to_address,
-            amount,
-        }) = &res.messages[0]
-        {
-            assert_eq!(from_address, &contract_addr);
+        if let CosmosMsg::Bank(BankMsg::Send { to_address, amount }) = &res.messages[0] {
             assert_eq!(to_address, &receiver_addr);
             assert_eq!(amount, &vec![coin(49, "SDT")]);
         } else {
@@ -563,27 +539,27 @@ mod tests {
 
     #[test]
     fn basic_queries() {
-        let mut deps = mock_dependencies(20, &[]);
+        let mut deps = mock_dependencies(&[]);
         // set the exchange rates between ETH and BTC (and back)
         deps.querier.with_market(&[
             ("ETH", "BTC", Decimal::percent(15)),
             ("BTC", "ETH", Decimal::percent(666)),
         ]);
 
-        let msg = InitMsg {
+        let msg = InstantiateMsg {
             ask: "BTC".into(),
             offer: "ETH".into(),
         };
-        let env = mock_env("creator", &[]);
-        let _res = init(&mut deps, env, msg).unwrap();
+        let info = mock_info("creator", &[]);
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         // check the config
-        let res = query(&mut deps, QueryMsg::Config {}).unwrap();
+        let res = query(deps.as_ref(), mock_env(), QueryMsg::Config {}).unwrap();
         let cfg: ConfigResponse = from_binary(&res).unwrap();
         assert_eq!(
             cfg,
             ConfigResponse {
-                owner: HumanAddr::from("creator"),
+                owner: Addr::unchecked("creator"),
                 ask: "BTC".to_string(),
                 offer: "ETH".to_string(),
             }
@@ -591,7 +567,8 @@ mod tests {
 
         // simulate a forward swap
         let res = query(
-            &mut deps,
+            deps.as_ref(),
+            mock_env(),
             QueryMsg::Simulate {
                 offer: coin(100, "ETH"),
             },
@@ -608,7 +585,8 @@ mod tests {
 
         // simulate a reverse swap
         let res = query(
-            &mut deps,
+            deps.as_ref(),
+            mock_env(),
             QueryMsg::Simulate {
                 offer: coin(10, "BTC"),
             },
@@ -626,19 +604,19 @@ mod tests {
 
     #[test]
     fn query_treasury() {
-        let mut deps = mock_dependencies(20, &[]);
+        let mut deps = mock_dependencies(&[]);
         // set the exchange rates between ETH and BTC (and back)
         let tax_rate = Decimal::percent(2);
         let tax_caps = &[("ETH", 1000u128), ("BTC", 500u128)];
 
         deps.querier.with_treasury(tax_rate, tax_caps);
 
-        let msg = InitMsg {
+        let msg = InstantiateMsg {
             ask: "BTC".into(),
             offer: "ETH".into(),
         };
-        let env = mock_env("creator", &[]);
-        let _res = init(&mut deps, env, msg).unwrap();
+        let info = mock_info("creator", &[]);
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         // test all treasury functions
         let tax_rate_query = QueryMsg::Reflect {
@@ -647,7 +625,7 @@ mod tests {
                 query_data: TerraQuery::TaxRate {},
             },
         };
-        let res = query(&mut deps, tax_rate_query).unwrap();
+        let res = query(deps.as_ref(), mock_env(), tax_rate_query).unwrap();
         let tax_rate_res: TaxRateResponse = from_binary(&res).unwrap();
         assert_eq!(tax_rate_res.rate, tax_rate);
 
@@ -659,7 +637,7 @@ mod tests {
                 },
             },
         };
-        let res = query(&mut deps, tax_cap_query).unwrap();
+        let res = query(deps.as_ref(), mock_env(), tax_cap_query).unwrap();
         let cap: TaxCapResponse = from_binary(&res).unwrap();
         assert_eq!(cap.cap, Uint128(1000));
     }

@@ -1,3 +1,3 @@
-[submodule "cosmwasm-examples"]
-	path = cosmwasm-examples
-	url = https://github.com/CosmWasm/cosmwasm-examples
+[submodule "cosmwasm-plus"]
+	path = cosmwasm-plus
+	url = https://github.com/CosmWasm/cosmwasm-plus

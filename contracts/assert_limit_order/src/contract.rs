@@ -1,9 +1,9 @@
 use cosmwasm_std::{
-    Api, Binary, Coin, Decimal, Env, Extern, HandleResponse, InitResponse, Querier, StdError,
-    StdResult, Storage, Uint128,
+    Coin, Decimal, Deps, DepsMut, Env, MessageInfo, QueryResponse, Response, StdError, StdResult,
+    Uint128,
 };
 
-use crate::msg::{HandleMsg, InitMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use terra_cosmwasm::{SwapResponse, TerraQuerier};
 
 const DECIMAL_FRACTIONAL: Uint128 = Uint128(1_000_000_000u128);
@@ -12,21 +12,23 @@ pub fn reverse_decimal(decimal: Decimal) -> Decimal {
     Decimal::from_ratio(DECIMAL_FRACTIONAL, decimal * DECIMAL_FRACTIONAL)
 }
 
-pub fn init<S: Storage, A: Api, Q: Querier>(
-    _deps: &mut Extern<S, A, Q>,
+pub fn instantiate(
+    _deps: DepsMut,
     _env: Env,
-    _msg: InitMsg,
-) -> StdResult<InitResponse> {
-    Ok(InitResponse::default())
+    _info: MessageInfo,
+    _msg: InstantiateMsg,
+) -> StdResult<Response> {
+    Ok(Response::default())
 }
 
-pub fn handle<S: Storage, A: Api, Q: Querier>(
-    deps: &mut Extern<S, A, Q>,
+pub fn execute(
+    deps: DepsMut,
     _env: Env,
-    msg: HandleMsg,
-) -> StdResult<HandleResponse> {
+    _info: MessageInfo,
+    msg: ExecuteMsg,
+) -> StdResult<Response> {
     match msg {
-        HandleMsg::AssertLimitOrder {
+        ExecuteMsg::AssertLimitOrder {
             offer_coin,
             ask_denom,
             minimum_receive,
@@ -34,12 +36,12 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
     }
 }
 
-pub fn assert_limit_order<S: Storage, A: Api, Q: Querier>(
-    deps: &mut Extern<S, A, Q>,
+pub fn assert_limit_order(
+    deps: DepsMut,
     offer_coin: Coin,
     ask_denom: String,
     minimum_receive: Uint128,
-) -> StdResult<HandleResponse> {
+) -> StdResult<Response> {
     let querier = TerraQuerier::new(&deps.querier);
     let swap_res: SwapResponse = querier.query_swap(offer_coin, ask_denom)?;
 
@@ -49,16 +51,9 @@ pub fn assert_limit_order<S: Storage, A: Api, Q: Querier>(
         ));
     }
 
-    Ok(HandleResponse {
-        messages: vec![],
-        log: vec![],
-        data: None,
-    })
+    Ok(Response::default())
 }
 
-pub fn query<S: Storage, A: Api, Q: Querier>(
-    _deps: &Extern<S, A, Q>,
-    _msg: QueryMsg,
-) -> StdResult<Binary> {
-    Ok(Binary::default())
+pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<QueryResponse> {
+    Ok(QueryResponse::default())
 }

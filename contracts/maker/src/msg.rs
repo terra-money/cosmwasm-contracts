@@ -1,31 +1,31 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{Coin, HumanAddr, Uint128};
+use cosmwasm_std::{Addr, Coin, Uint128};
 
 use terra_cosmwasm::TerraQueryWrapper;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct InitMsg {
+pub struct InstantiateMsg {
     pub offer: String,
     pub ask: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum HandleMsg {
+pub enum ExecuteMsg {
     /// Buy will try to buy ask and sell offer, up to limit offer tokens, or current balance
     Buy {
         limit: Option<Uint128>,
-        recipient: Option<HumanAddr>,
+        recipient: Option<Addr>,
     },
     /// Sell is the reverse of buy. Selling ask and buying offer.
     Sell {
         limit: Option<Uint128>,
-        recipient: Option<HumanAddr>,
+        recipient: Option<Addr>,
     },
     /// Send the given amount of coins to target address
-    Send { coin: Coin, recipient: HumanAddr },
+    Send { coin: Coin, recipient: Addr },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -56,5 +56,5 @@ pub struct SimulateResponse {
 pub struct ConfigResponse {
     pub offer: String,
     pub ask: String,
-    pub owner: HumanAddr,
+    pub owner: Addr,
 }
