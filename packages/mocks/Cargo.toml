@@ -12,6 +12,6 @@ readme = "README.md"
 
 [dependencies]
 terra-cosmwasm = "2.0.0-alpha2"
-cosmwasm-std = { version = "0.14.0-beta2", features = ["stargate"] }
+cosmwasm-std = { version = "0.14.0-beta3", features = ["stargate"] }
 schemars = "0.8.1"
 serde = { version = "1.0.103", default-features = false, features = ["derive"] }
