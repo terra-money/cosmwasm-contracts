@@ -11,14 +11,16 @@ The organization is relatively simple. The top-level directory is just a placeho
 and has no real code. And we use workspaces to add multiple contracts below.
 This allows us to compile all contracts with one command.
 
-## Usage:
+## Usage
 
-The following contracts are available for use. You can view the source code under `src`
-and a precompiled wasm ready for deployment under `contract.wasm`. Take a look here:
+Sample contracts are available under the `contracts/` directory. You can view the source code under each contract’s `src` subdirectory. Take a look here:
 
-* [escrow](./cosmwasm-examples/escrow) - A basic escrow with timeout and partial release
-* [erc20](./cosmwasm-examples/erc20) - Basic implementation the erc20 interface for CosmWasm, as a base for token designers
 * [maker](./contracts/maker) - Example implementation to show terra-binding for CosmWasm
+* [assert limit order](./contracts/assert_limit_order)
+* [mask](./contracts/mask)
+* [mintable erc20](./contracts/mintable_erc20)
+* [roll staking](./contracts/roll_staking)
+* [send to burn address](./contracts/send-to-burn-address)
 
 ## Development
 
