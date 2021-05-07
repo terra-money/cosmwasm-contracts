@@ -16,8 +16,8 @@ This allows us to compile all contracts with one command.
 The following contracts are available for use. You can view the source code under `src`
 and a precompiled wasm ready for deployment under `contract.wasm`. Take a look here:
 
-* [escrow](./cosmwasm-examples/escrow) - A basic escrow with timeout and partial release
-* [erc20](./cosmwasm-examples/erc20) - Basic implementation the erc20 interface for CosmWasm, as a base for token designers
+* [assert_limit_order](./cosmwasm-examples/assert_limit_order) - It is used to assert minimum receive of on-chain swap operation
+* [send_to_burn_address](./cosmwasm-examples/send_to_burn_address) - Has only one interface to transfer all tokens to the burn address
 * [maker](./contracts/maker) - Example implementation to show terra-binding for CosmWasm
 
 ## Development
@@ -47,18 +47,8 @@ on merge. See [`cosmwasm-opt`](https://github.com/confio/cosmwasm-opt/blob/maste
 for an explanation of how to make a deterministic build.
 
 ```sh
-rm contract.wasm
-docker run --rm -v $(pwd):/code \
-  --mount type=volume,source=$(basename $(pwd))_cache,target=/code/target \
+docker run --rm -v "$(pwd)":/code \
+  --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
   --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-  confio/cosmwasm-opt:0.9.0
-
-# verify output - these should be the same
-sha256sum contract.wasm
-cat hash.txt
+  cosmwasm/rust-optimizer:0.11.3
 ```
-
-If the sha256 hash changes without any code changes, even when compiling on different machines,
-or removing those cache volumes, then please submit an issue on [cosmwasm-opt](https://github.com/confio/cosmwasm-opt).
-
-Once you pass these checks, please open a [PR on this repo](https://github.com/CosmWasm/cosmwasm-examples/pulls).

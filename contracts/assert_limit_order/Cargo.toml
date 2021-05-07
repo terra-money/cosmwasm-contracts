@@ -34,11 +34,11 @@ overflow-checks = true
 backtraces = ["cosmwasm-std/backtraces"]
 
 [dependencies]
-terra-cosmwasm = "2.0.0-alpha4"
-cosmwasm-std = "0.14.0-beta3"
-cosmwasm-storage = "0.14.0-beta3"
+terra-cosmwasm = "2.0.0"
+cosmwasm-std = "0.14.0"
+cosmwasm-storage = "0.14.0"
 schemars = "0.8.1"
 serde = { version = "1.0.103", default-features = false, features = ["derive"] }
 
 [dev-dependencies]
-cosmwasm-schema = "0.14.0-beta3"
+cosmwasm-schema = "0.14.0"
