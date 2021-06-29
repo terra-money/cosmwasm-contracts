@@ -22,7 +22,7 @@ impl TreasuryQuerier {
     pub fn new(tax_rate: Decimal, tax_caps: &[(&str, u128)]) -> Self {
         let mut tax_cap = HashMap::new();
         for (denom, cap) in tax_caps.iter() {
-            tax_cap.insert((*denom).to_string(), Uint128(*cap));
+            tax_cap.insert((*denom).to_string(), Uint128::from(*cap));
         }
         TreasuryQuerier { tax_rate, tax_cap }
     }
@@ -69,6 +69,6 @@ mod test {
         };
         let res = querier.query(&tax_cap_query).unwrap().unwrap();
         let cap: TaxCapResponse = from_binary(&res).unwrap();
-        assert_eq!(cap.cap, Uint128(1000));
+        assert_eq!(cap.cap, Uint128::from(1000u128));
     }
 }

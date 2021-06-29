@@ -95,14 +95,14 @@ fn buy_limit() {
     // we buy BTC with half the ETH
     let info = mock_info("creator", &[]);
     let msg = ExecuteMsg::Buy {
-        limit: Some(Uint128(100)),
+        limit: Some(Uint128::from(100u128)),
         recipient: None,
     };
     let res: Response<TerraMsgWrapper> = execute(&mut deps, mock_env(), info, msg).unwrap();
 
     // make sure we produce proper trade order
     assert_eq!(1, res.messages.len());
-    if let CosmosMsg::Custom(TerraMsgWrapper { route, msg_data }) = &res.messages[0] {
+    if let CosmosMsg::Custom(TerraMsgWrapper { route, msg_data }) = &res.messages[0].msg {
         assert_eq!(route, &TerraRoute::Market);
 
         match msg_data {

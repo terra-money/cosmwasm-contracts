@@ -2,8 +2,8 @@ use std::cmp::min;
 
 use cosmwasm_std::{
     attr, to_binary, to_vec, Addr, BankMsg, Binary, Coin, ContractResult, CosmosMsg, Deps, DepsMut,
-    Env, MessageInfo, QueryRequest, QueryResponse, Response, StdError, StdResult, SystemResult,
-    Uint128,
+    Env, MessageInfo, QueryRequest, QueryResponse, Response, StdError, StdResult, SubMsg,
+    SystemResult, Uint128,
 };
 use terra_cosmwasm::{
     create_swap_msg, create_swap_send_msg, TerraMsgWrapper, TerraQuerier, TerraQueryWrapper,
@@ -64,14 +64,13 @@ pub fn transfer(
             attr("action", "send"),
             attr("destination", to_addr.to_string()),
         ],
-        messages: vec![BankMsg::Send {
+        messages: vec![SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: to_addr.to_string(),
             amount: vec![Coin {
                 denom: coin.denom,
                 amount: Uint128::from(coin.amount.u128() - expected_tax.u128()),
             }],
-        }
-        .into()],
+        }))],
         ..Response::default()
     };
 
@@ -92,9 +91,10 @@ pub fn buy(
 
     let contract_addr = env.contract.address;
     let mut offer = deps.querier.query_balance(&contract_addr, &state.offer)?;
-    if offer.amount == Uint128(0) {
+    if offer.amount == Uint128::zero() {
         return Ok(Response::default());
     }
+
     if let Some(stop) = limit {
         offer.amount = min(offer.amount, stop);
     }
@@ -107,7 +107,7 @@ pub fn buy(
     }
 
     Ok(Response {
-        messages: vec![msg],
+        messages: vec![SubMsg::new(msg)],
         ..Response::default()
     })
 }
@@ -126,7 +126,7 @@ pub fn sell(
 
     let contract_addr = env.contract.address;
     let mut sell = deps.querier.query_balance(&contract_addr, &state.ask)?;
-    if sell.amount == Uint128(0) {
+    if sell.amount == Uint128::zero() {
         return Ok(Response::default());
     }
 
@@ -142,7 +142,7 @@ pub fn sell(
     }
 
     Ok(Response {
-        messages: vec![msg],
+        messages: vec![SubMsg::new(msg)],
         ..Response::default()
     })
 }
@@ -249,14 +249,14 @@ mod tests {
         // we buy BTC with half the ETH
         let info = mock_info("creator", &[]);
         let msg = ExecuteMsg::Buy {
-            limit: Some(Uint128(100)),
+            limit: Some(Uint128::from(100u128)),
             recipient: None,
         };
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         // make sure we produce proper trade order
         assert_eq!(1, res.messages.len());
-        if let CosmosMsg::Custom(TerraMsgWrapper { route, msg_data }) = &res.messages[0] {
+        if let CosmosMsg::Custom(TerraMsgWrapper { route, msg_data }) = &res.messages[0].msg {
             assert_eq!(route, &TerraRoute::Market);
 
             match &msg_data {
@@ -289,14 +289,14 @@ mod tests {
         let info = mock_info("creator", &[]);
         let recipient = "addr0000".to_string();
         let msg = ExecuteMsg::Buy {
-            limit: Some(Uint128(100)),
+            limit: Some(Uint128::from(100u128)),
             recipient: Some(Addr::unchecked("addr0000".to_string())),
         };
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         // make sure we produce proper trade order
         assert_eq!(1, res.messages.len());
-        if let CosmosMsg::Custom(TerraMsgWrapper { route, msg_data }) = &res.messages[0] {
+        if let CosmosMsg::Custom(TerraMsgWrapper { route, msg_data }) = &res.messages[0].msg {
             assert_eq!(route, &TerraRoute::Market);
 
             match &msg_data {
@@ -330,7 +330,7 @@ mod tests {
         // we buy BTC with half the ETH
         let info = mock_info("someone else", &[]);
         let msg = ExecuteMsg::Buy {
-            limit: Some(Uint128(100)),
+            limit: Some(Uint128::from(100u128)),
             recipient: None,
         };
         match execute(deps.as_mut(), mock_env(), info, msg).unwrap_err() {
@@ -360,7 +360,7 @@ mod tests {
 
         // make sure we produce proper trade order
         assert_eq!(1, res.messages.len());
-        if let CosmosMsg::Custom(TerraMsgWrapper { route, msg_data }) = &res.messages[0] {
+        if let CosmosMsg::Custom(TerraMsgWrapper { route, msg_data }) = &res.messages[0].msg {
             assert_eq!(route, &TerraRoute::Market);
 
             match &msg_data {
@@ -400,7 +400,7 @@ mod tests {
 
         // make sure we produce proper trade order
         assert_eq!(1, res.messages.len());
-        if let CosmosMsg::Custom(TerraMsgWrapper { route, msg_data }) = &res.messages[0] {
+        if let CosmosMsg::Custom(TerraMsgWrapper { route, msg_data }) = &res.messages[0].msg {
             assert_eq!(route, &TerraRoute::Market);
 
             match &msg_data {
@@ -434,14 +434,14 @@ mod tests {
         // we sell all the BTC (faked balance above)
         let info = mock_info("creator", &[]);
         let msg = ExecuteMsg::Sell {
-            limit: Some(Uint128(250)),
+            limit: Some(Uint128::from(250u128)),
             recipient: None,
         };
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         // make sure we produce proper trade order
         assert_eq!(1, res.messages.len());
-        if let CosmosMsg::Custom(TerraMsgWrapper { route, msg_data }) = &res.messages[0] {
+        if let CosmosMsg::Custom(TerraMsgWrapper { route, msg_data }) = &res.messages[0].msg {
             assert_eq!(route, &TerraRoute::Market);
 
             match &msg_data {
@@ -482,7 +482,7 @@ mod tests {
         let msg = ExecuteMsg::Send {
             coin: Coin {
                 denom: "SDT".to_string(),
-                amount: Uint128(10000),
+                amount: Uint128::from(10000u128),
             },
             recipient: receiver_addr.clone(),
         };
@@ -490,7 +490,7 @@ mod tests {
 
         // make sure we produce proper send with tax consideration
         assert_eq!(1, res.messages.len());
-        if let CosmosMsg::Bank(BankMsg::Send { to_address, amount }) = &res.messages[0] {
+        if let CosmosMsg::Bank(BankMsg::Send { to_address, amount }) = &res.messages[0].msg {
             assert_eq!(to_address, &receiver_addr);
             assert_eq!(amount, &vec![coin(9990, "SDT")]);
         } else {
@@ -521,7 +521,7 @@ mod tests {
         let msg = ExecuteMsg::Send {
             coin: Coin {
                 denom: "SDT".to_string(),
-                amount: Uint128(50),
+                amount: Uint128::from(50u128),
             },
             recipient: receiver_addr.clone(),
         };
@@ -529,7 +529,7 @@ mod tests {
 
         // make sure tax is capped
         assert_eq!(1, res.messages.len());
-        if let CosmosMsg::Bank(BankMsg::Send { to_address, amount }) = &res.messages[0] {
+        if let CosmosMsg::Bank(BankMsg::Send { to_address, amount }) = &res.messages[0].msg {
             assert_eq!(to_address, &receiver_addr);
             assert_eq!(amount, &vec![coin(49, "SDT")]);
         } else {
@@ -639,6 +639,6 @@ mod tests {
         };
         let res = query(deps.as_ref(), mock_env(), tax_cap_query).unwrap();
         let cap: TaxCapResponse = from_binary(&res).unwrap();
-        assert_eq!(cap.cap, Uint128(1000));
+        assert_eq!(cap.cap, Uint128::from(1000u128));
     }
 }

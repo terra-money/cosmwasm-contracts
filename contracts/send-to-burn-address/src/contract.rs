@@ -1,16 +1,26 @@
 use cosmwasm_std::{
     BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Response,
-    StdResult, Uint128,
+    StdResult, SubMsg, Uint128,
 };
 
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use terra_cosmwasm::TerraQuerier;
 
-pub fn instantiate(_deps: DepsMut, _env: Env, _info: MessageInfo, _msg: InstantiateMsg) -> StdResult<Response> {
+pub fn instantiate(
+    _deps: DepsMut,
+    _env: Env,
+    _info: MessageInfo,
+    _msg: InstantiateMsg,
+) -> StdResult<Response> {
     Ok(Response::default())
 }
 
-pub fn execute(deps: DepsMut, env: Env, _info: MessageInfo, msg: ExecuteMsg) -> StdResult<Response> {
+pub fn execute(
+    deps: DepsMut,
+    env: Env,
+    _info: MessageInfo,
+    msg: ExecuteMsg,
+) -> StdResult<Response> {
     match msg {
         ExecuteMsg::SendToBurnAccount {} => send_to_burn_account(deps, env),
     }
@@ -20,15 +30,15 @@ fn send_to_burn_account(deps: DepsMut, env: Env) -> StdResult<Response> {
     let balances: Vec<Coin> = deps.querier.query_all_balances(&env.contract.address)?;
     let amount = deduct_tax(deps, balances)?;
     Ok(Response {
-        messages: vec![CosmosMsg::Bank(BankMsg::Send {
+        messages: vec![SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: "terra1sk06e3dyexuq4shw77y3dsv480xv42mq73anxu".to_string(),
             amount,
-        })],
+        }))],
         ..Response::default()
     })
 }
 
-static DECIMAL_FRACTION: Uint128 = Uint128(1_000_000_000_000_000_000u128);
+static DECIMAL_FRACTION: u128 = 1_000_000_000_000_000_000u128;
 fn deduct_tax(deps: DepsMut, coins: Vec<Coin>) -> StdResult<Vec<Coin>> {
     let terra_querier = TerraQuerier::new(&deps.querier);
     let tax_rate: Decimal = (terra_querier.query_tax_rate()?).rate;
@@ -44,7 +54,7 @@ fn deduct_tax(deps: DepsMut, coins: Vec<Coin>) -> StdResult<Vec<Coin>> {
                         - std::cmp::min(
                             v.amount.multiply_ratio(
                                 DECIMAL_FRACTION,
-                                DECIMAL_FRACTION * tax_rate + DECIMAL_FRACTION,
+                                (tax_rate * DECIMAL_FRACTION.into()).u128() + DECIMAL_FRACTION,
                             ),
                             tax_cap,
                         )
