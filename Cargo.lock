@@ -401,6 +401,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw20-legacy"
+version = "0.1.1"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-storage-plus",
+ "cw0",
+ "cw2",
+ "cw20",
+ "cw20-base",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "darling"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1349,23 +1366,6 @@ dependencies = [
  "cosmwasm-std",
  "schemars",
  "serde",
-]
-
-[[package]]
-name = "terra-cw20"
-version = "0.7.0"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cosmwasm-storage",
- "cw-storage-plus",
- "cw0",
- "cw2",
- "cw20",
- "cw20-base",
- "schemars",
- "serde",
- "thiserror",
 ]
 
 [[package]]

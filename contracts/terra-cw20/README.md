@@ -1,6 +1,9 @@
-# CW20 Basic
+# CW20-Legacy
 
-This version of the cw20 base contract is compatible with legacy contract running on Terra chain Columbus-4.
+This version of the CW20 base contract is compatible with the legacy contract running on the Terra chain Columbus-4.
+
+> **NOTE**
+This contract is modified for the purpose of migration from a Columbus-4 CW20 token contract to Columbus-5. Using the official version of CW20 is strongly recommended for other usages.
 
 This is a basic implementation of a cw20 contract. It implements
 the [CW20 spec](../../packages/cw20/README.md) and is designed to
