@@ -1,6 +1,6 @@
 [package]
 name = "cw20-legacy"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Mohammadsadegh Najafi <MSNTCS@users.noreply.github.com>"]
 edition = "2018"
 description = "Basic implementation of a CosmWasm-20 compliant token compatible with Columbus-4 token"

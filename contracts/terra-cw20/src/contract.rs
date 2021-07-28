@@ -42,7 +42,7 @@ pub fn instantiate(
 
     let mint = match msg.mint {
         Some(m) => Some(MinterData {
-            minter: deps.api.addr_validate(&m.minter)?,
+            minter: deps.api.addr_canonicalize(&m.minter)?,
             cap: m.cap,
         }),
         None => None,
@@ -63,8 +63,8 @@ pub fn instantiate(
 pub fn create_accounts(deps: &mut DepsMut, accounts: &[Cw20Coin]) -> StdResult<Uint128> {
     let mut total_supply = Uint128::zero();
     for row in accounts {
-        let address = deps.api.addr_validate(&row.address)?;
-        BALANCES.save(deps.storage, &address, &row.amount)?;
+        let address = deps.api.addr_canonicalize(&row.address)?;
+        BALANCES.save(deps.storage, address.as_slice(), &row.amount)?;
         total_supply += row.amount;
     }
     Ok(total_supply)
@@ -128,14 +128,18 @@ pub fn execute_transfer(
 
     BALANCES.update(
         deps.storage,
-        &info.sender,
+        deps.api
+            .addr_canonicalize(&info.sender.to_string())?
+            .as_slice(),
         |balance: Option<Uint128>| -> StdResult<_> {
             Ok(balance.unwrap_or_default().checked_sub(amount)?)
         },
     )?;
     BALANCES.update(
         deps.storage,
-        &rcpt_addr,
+        deps.api
+            .addr_canonicalize(&rcpt_addr.to_string())?
+            .as_slice(),
         |balance: Option<Uint128>| -> StdResult<_> { Ok(balance.unwrap_or_default() + amount) },
     )?;
 
@@ -166,7 +170,9 @@ pub fn execute_burn(
     // lower balance
     BALANCES.update(
         deps.storage,
-        &info.sender,
+        deps.api
+            .addr_canonicalize(&info.sender.to_string())?
+            .as_slice(),
         |balance: Option<Uint128>| -> StdResult<_> {
             Ok(balance.unwrap_or_default().checked_sub(amount)?)
         },
@@ -202,7 +208,10 @@ pub fn execute_mint(
     }
 
     let mut config = TOKEN_INFO.load(deps.storage)?;
-    if config.mint.is_none() || config.mint.as_ref().unwrap().minter != info.sender {
+    if config.mint.is_none()
+        || config.mint.as_ref().unwrap().minter
+            != deps.api.addr_canonicalize(&info.sender.to_string())?
+    {
         return Err(ContractError::Unauthorized {});
     }
 
@@ -219,17 +228,21 @@ pub fn execute_mint(
     let rcpt_addr = deps.api.addr_validate(&recipient)?;
     BALANCES.update(
         deps.storage,
-        &rcpt_addr,
+        deps.api
+            .addr_canonicalize(&rcpt_addr.to_string())?
+            .as_slice(),
         |balance: Option<Uint128>| -> StdResult<_> { Ok(balance.unwrap_or_default() + amount) },
     )?;
 
     let res = Response {
+        messages: vec![],
         attributes: vec![
             attr("action", "mint"),
             attr("to", recipient),
             attr("amount", amount),
         ],
-        ..Response::default()
+        events: vec![],
+        data: None,
     };
     Ok(res)
 }
@@ -251,14 +264,18 @@ pub fn execute_send(
     // move the tokens to the contract
     BALANCES.update(
         deps.storage,
-        &info.sender,
+        deps.api
+            .addr_canonicalize(&info.sender.to_string())?
+            .as_slice(),
         |balance: Option<Uint128>| -> StdResult<_> {
             Ok(balance.unwrap_or_default().checked_sub(amount)?)
         },
     )?;
     BALANCES.update(
         deps.storage,
-        &rcpt_addr,
+        deps.api
+            .addr_canonicalize(&rcpt_addr.to_string())?
+            .as_slice(),
         |balance: Option<Uint128>| -> StdResult<_> { Ok(balance.unwrap_or_default() + amount) },
     )?;
 
@@ -308,9 +325,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 pub fn query_balance(deps: Deps, address: String) -> StdResult<BalanceResponse> {
-    let address = deps.api.addr_validate(&address)?;
+    let address = deps.api.addr_canonicalize(&address)?;
     let balance = BALANCES
-        .may_load(deps.storage, &address)?
+        .may_load(deps.storage, address.as_slice())?
         .unwrap_or_default();
     Ok(BalanceResponse { balance })
 }
@@ -330,7 +347,7 @@ pub fn query_minter(deps: Deps) -> StdResult<Option<MinterResponse>> {
     let meta = TOKEN_INFO.load(deps.storage)?;
     let minter = match meta.mint {
         Some(m) => Some(MinterResponse {
-            minter: m.minter.into(),
+            minter: deps.api.addr_humanize(&m.minter)?.into(),
             cap: m.cap,
         }),
         None => None,
@@ -440,16 +457,16 @@ mod tests {
         );
         assert_eq!(
             get_balance(deps.as_ref(), "addr0000"),
-            Uint128::new(11223344)
+            Uint128::from(11223344u128)
         );
     }
 
     #[test]
     fn instantiate_mintable() {
         let mut deps = mock_dependencies(&[]);
-        let amount = Uint128::new(11223344);
+        let amount = Uint128::from(11223344u128);
         let minter = String::from("asmodat");
-        let limit = Uint128::new(511223344);
+        let limit = Uint128::from(511223344u128);
         let instantiate_msg = InstantiateMsg {
             name: "Cash Token".to_string(),
             symbol: "CASH".to_string(),
@@ -479,7 +496,7 @@ mod tests {
         );
         assert_eq!(
             get_balance(deps.as_ref(), "addr0000"),
-            Uint128::new(11223344)
+            Uint128::from(11223344u128)
         );
         assert_eq!(
             query_minter(deps.as_ref()).unwrap(),
@@ -493,9 +510,9 @@ mod tests {
     #[test]
     fn instantiate_mintable_over_cap() {
         let mut deps = mock_dependencies(&[]);
-        let amount = Uint128::new(11223344);
+        let amount = Uint128::from(11223344u128);
         let minter = String::from("asmodat");
-        let limit = Uint128::new(11223300);
+        let limit = Uint128::from(11223300u128);
         let instantiate_msg = InstantiateMsg {
             name: "Cash Token".to_string(),
             symbol: "CASH".to_string(),
@@ -523,9 +540,9 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
 
         let genesis = String::from("genesis");
-        let amount = Uint128::new(11223344);
+        let amount = Uint128::from(11223344u128);
         let minter = String::from("asmodat");
-        let limit = Uint128::new(511223344);
+        let limit = Uint128::from(511223344u128);
         do_instantiate_with_minter(deps.as_mut(), &genesis, amount, &minter, Some(limit));
 
         // minter can mint coins to some winner
@@ -571,7 +588,7 @@ mod tests {
         do_instantiate_with_minter(
             deps.as_mut(),
             &String::from("genesis"),
-            Uint128::new(1234),
+            Uint128::from(1234u128),
             &String::from("minter"),
             None,
         );
