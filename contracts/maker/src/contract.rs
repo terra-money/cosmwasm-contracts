@@ -2,8 +2,8 @@ use std::cmp::min;
 
 use cosmwasm_std::{
     attr, to_binary, to_vec, Addr, BankMsg, Binary, Coin, ContractResult, CosmosMsg, Deps, DepsMut,
-    Env, MessageInfo, QueryRequest, QueryResponse, Response, StdError, StdResult, SubMsg,
-    SystemResult, Uint128,
+    Env, MessageInfo, QueryRequest, QueryResponse, Response, StdError, StdResult, SystemResult,
+    Uint128,
 };
 use terra_cosmwasm::{
     create_swap_msg, create_swap_send_msg, TerraMsgWrapper, TerraQuerier, TerraQueryWrapper,
@@ -59,22 +59,18 @@ pub fn transfer(
         expected_tax = tax_cap;
     }
 
-    let res = Response {
-        attributes: vec![
+    Ok(Response::new()
+        .add_attributes(vec![
             attr("action", "send"),
             attr("destination", to_addr.to_string()),
-        ],
-        messages: vec![SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+        ])
+        .add_message(CosmosMsg::Bank(BankMsg::Send {
             to_address: to_addr.to_string(),
             amount: vec![Coin {
                 denom: coin.denom,
                 amount: Uint128::from(coin.amount.u128() - expected_tax.u128()),
             }],
-        }))],
-        ..Response::default()
-    };
-
-    Ok(res)
+        })))
 }
 
 pub fn buy(
@@ -106,10 +102,7 @@ pub fn buy(
         msg = create_swap_msg(offer, state.ask);
     }
 
-    Ok(Response {
-        messages: vec![SubMsg::new(msg)],
-        ..Response::default()
-    })
+    Ok(Response::new().add_message(msg))
 }
 
 pub fn sell(
@@ -141,10 +134,7 @@ pub fn sell(
         msg = create_swap_msg(sell, state.offer);
     }
 
-    Ok(Response {
-        messages: vec![SubMsg::new(msg)],
-        ..Response::default()
-    })
+    Ok(Response::new().add_message(msg))
 }
 
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<QueryResponse> {

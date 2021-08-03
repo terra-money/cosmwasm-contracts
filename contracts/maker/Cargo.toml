@@ -36,14 +36,14 @@ cranelift = ["cosmwasm-vm/cranelift"]
 backtraces = ["cosmwasm-std/backtraces", "cosmwasm-vm/backtraces"]
 
 [dependencies]
-terra-cosmwasm = "2.1.0"
-cosmwasm-std = { version = "0.15.0", features = ["iterator"] }
-cosmwasm-storage = { version = "0.15.0", features = ["iterator"] }
+terra-cosmwasm = "2.2.0-rc2"
+cosmwasm-std = { version = "0.16.0-rc2" }
+cosmwasm-storage = { version = "0.16.0-rc2" }
 schemars = "0.8.1"
 serde = { version = "1.0.103", default-features = false, features = ["derive"] }
 snafu = { version = "0.6.3" }
 
 [dev-dependencies]
 terra-mocks = { path = "../../packages/mocks", version = "0.0.0" }
-cosmwasm-vm = { version = "0.15.0", default-features=false, features = ["iterator"] }
-cosmwasm-schema = { version = "0.15.0" }
+cosmwasm-vm = { version = "0.16.0-rc2", default-features=false, features = ["iterator"] }
+cosmwasm-schema = { version = "0.16.0-rc2" }

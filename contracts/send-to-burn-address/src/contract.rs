@@ -1,6 +1,6 @@
 use cosmwasm_std::{
     BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Response,
-    StdResult, SubMsg, Uint128,
+    StdResult, Uint128,
 };
 
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
@@ -29,13 +29,10 @@ pub fn execute(
 fn send_to_burn_account(deps: DepsMut, env: Env) -> StdResult<Response> {
     let balances: Vec<Coin> = deps.querier.query_all_balances(&env.contract.address)?;
     let amount = deduct_tax(deps, balances)?;
-    Ok(Response {
-        messages: vec![SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: "terra1sk06e3dyexuq4shw77y3dsv480xv42mq73anxu".to_string(),
-            amount,
-        }))],
-        ..Response::default()
-    })
+    Ok(Response::new().add_message(CosmosMsg::Bank(BankMsg::Send {
+        to_address: "terra1sk06e3dyexuq4shw77y3dsv480xv42mq73anxu".to_string(),
+        amount,
+    })))
 }
 
 static DECIMAL_FRACTION: u128 = 1_000_000_000_000_000_000u128;
