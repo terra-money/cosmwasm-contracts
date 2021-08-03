@@ -339,6 +339,86 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-storage-plus"
+version = "0.8.0-rc1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1dba431e9ecdb0a7abab540da0d07c348518e039b15f9c5052f71f2d909045fc"
+dependencies = [
+ "cosmwasm-std",
+ "schemars",
+ "serde",
+]
+
+[[package]]
+name = "cw0"
+version = "0.8.0-rc1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "63c2b9f65a3c6b22ef128c483c37dc205bec27fb03f125f784c47c8959d228ea"
+dependencies = [
+ "cosmwasm-std",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "cw2"
+version = "0.8.0-rc1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3f31f0fea2f896e8bcdad6cb1aadc080217a153448ddd5bf1b0deb20fcd60f62"
+dependencies = [
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "schemars",
+ "serde",
+]
+
+[[package]]
+name = "cw20"
+version = "0.8.0-rc1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9de0f4164b3c57ab5b80e2bd9f0b5f6a355bcf0df1d727e8f14ea3d6d12e2ea2"
+dependencies = [
+ "cosmwasm-std",
+ "cw0",
+ "schemars",
+ "serde",
+]
+
+[[package]]
+name = "cw20-base"
+version = "0.8.0-rc1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f4be3479f5a9fa125ab035fba216abf02908851557a9f838b0970ed1e791dcba"
+dependencies = [
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw0",
+ "cw2",
+ "cw20",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "cw20-legacy"
+version = "0.2.0-rc1"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-storage-plus",
+ "cw0",
+ "cw2",
+ "cw20",
+ "cw20-base",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "darling"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1277,9 +1357,9 @@ dependencies = [
 
 [[package]]
 name = "terra-cosmwasm"
-version = "2.2.0-rc2"
+version = "2.2.0-rc3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "274afa8f93f1664deaa8859e4c14f322154a196a151bf1e958d2251e50933a89"
+checksum = "dc515a8afa769c97dc19f01a2ea24ac12890c1200e905a986b7756abcd2b2a43"
 dependencies = [
  "cosmwasm-std",
  "schemars",
