@@ -340,9 +340,9 @@ dependencies = [
 
 [[package]]
 name = "cw-storage-plus"
-version = "0.8.0-rc1"
+version = "0.8.0-rc2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1dba431e9ecdb0a7abab540da0d07c348518e039b15f9c5052f71f2d909045fc"
+checksum = "7eb8e7cab1cecec97fdc913fc8a24b090f4ece590a38e0b8a8d3ae4b008e8fdd"
 dependencies = [
  "cosmwasm-std",
  "schemars",
@@ -351,9 +351,9 @@ dependencies = [
 
 [[package]]
 name = "cw0"
-version = "0.8.0-rc1"
+version = "0.8.0-rc2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "63c2b9f65a3c6b22ef128c483c37dc205bec27fb03f125f784c47c8959d228ea"
+checksum = "04f822a0780c6440604d66b416a42d726f9180ef9717e302a177b65d389d272d"
 dependencies = [
  "cosmwasm-std",
  "schemars",
@@ -363,9 +363,9 @@ dependencies = [
 
 [[package]]
 name = "cw2"
-version = "0.8.0-rc1"
+version = "0.8.0-rc2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f31f0fea2f896e8bcdad6cb1aadc080217a153448ddd5bf1b0deb20fcd60f62"
+checksum = "ef3cf7bd05f56a9b4281c764f8d6347fe9f60b017ef3c7a3900d552684a87d89"
 dependencies = [
  "cosmwasm-std",
  "cw-storage-plus",
@@ -375,9 +375,9 @@ dependencies = [
 
 [[package]]
 name = "cw20"
-version = "0.8.0-rc1"
+version = "0.8.0-rc2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9de0f4164b3c57ab5b80e2bd9f0b5f6a355bcf0df1d727e8f14ea3d6d12e2ea2"
+checksum = "97f51a166ddfda481ae837621c72d1bea749685661a966cab775fd65468cb2cb"
 dependencies = [
  "cosmwasm-std",
  "cw0",
@@ -387,9 +387,9 @@ dependencies = [
 
 [[package]]
 name = "cw20-base"
-version = "0.8.0-rc1"
+version = "0.8.0-rc2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4be3479f5a9fa125ab035fba216abf02908851557a9f838b0970ed1e791dcba"
+checksum = "0f57ffaf45a901b71c8654431eaa6167a7b492c9aafc569bfdb2799c24a4f72f"
 dependencies = [
  "cosmwasm-std",
  "cw-storage-plus",
@@ -403,7 +403,7 @@ dependencies = [
 
 [[package]]
 name = "cw20-legacy"
-version = "0.2.0"
+version = "0.2.0-rc2"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
