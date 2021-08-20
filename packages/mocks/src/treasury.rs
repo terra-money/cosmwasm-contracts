@@ -1,4 +1,4 @@
-use cosmwasm_std::{to_binary, Decimal, QuerierResult, Uint128};
+use cosmwasm_std::{to_binary, Decimal, QuerierResult, SystemResult, Uint128};
 use std::collections::HashMap;
 
 use terra_cosmwasm::{TaxCapResponse, TaxRateResponse, TerraQuery};
@@ -22,7 +22,7 @@ impl TreasuryQuerier {
     pub fn new(tax_rate: Decimal, tax_caps: &[(&str, u128)]) -> Self {
         let mut tax_cap = HashMap::new();
         for (denom, cap) in tax_caps.iter() {
-            tax_cap.insert((*denom).to_string(), Uint128(*cap));
+            tax_cap.insert((*denom).to_string(), Uint128::from(*cap));
         }
         TreasuryQuerier { tax_rate, tax_cap }
     }
@@ -33,12 +33,12 @@ impl TreasuryQuerier {
                 let res = TaxRateResponse {
                     rate: self.tax_rate,
                 };
-                Ok(to_binary(&res))
+                SystemResult::Ok(to_binary(&res).into())
             }
             TerraQuery::TaxCap { denom } => {
                 let cap = self.tax_cap.get(denom).copied().unwrap_or_default();
                 let res = TaxCapResponse { cap };
-                Ok(to_binary(&res))
+                SystemResult::Ok(to_binary(&res).into())
             }
             _ => panic!("DO NOT ENTER HERE"),
         }
@@ -69,6 +69,6 @@ mod test {
         };
         let res = querier.query(&tax_cap_query).unwrap().unwrap();
         let cap: TaxCapResponse = from_binary(&res).unwrap();
-        assert_eq!(cap.cap, Uint128(1000));
+        assert_eq!(cap.cap, Uint128::from(1000u128));
     }
 }

@@ -49,18 +49,8 @@ on merge. See [`cosmwasm-opt`](https://github.com/confio/cosmwasm-opt/blob/maste
 for an explanation of how to make a deterministic build.
 
 ```sh
-rm contract.wasm
-docker run --rm -v $(pwd):/code \
-  --mount type=volume,source=$(basename $(pwd))_cache,target=/code/target \
+docker run --rm -v "$(pwd)":/code \
+  --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
   --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-  confio/cosmwasm-opt:0.9.0
-
-# verify output - these should be the same
-sha256sum contract.wasm
-cat hash.txt
+  cosmwasm/rust-optimizer:0.11.3
 ```
-
-If the sha256 hash changes without any code changes, even when compiling on different machines,
-or removing those cache volumes, then please submit an issue on [cosmwasm-opt](https://github.com/confio/cosmwasm-opt).
-
-Once you pass these checks, please open a [PR on this repo](https://github.com/CosmWasm/cosmwasm-examples/pulls).

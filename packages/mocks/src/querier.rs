@@ -1,7 +1,7 @@
 use cosmwasm_std::testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR};
 use cosmwasm_std::{
-    from_slice, Coin, Decimal, Extern, FullDelegation, HumanAddr, Querier, QuerierResult,
-    QueryRequest, SystemError, Validator,
+    from_slice, Coin, Decimal, FullDelegation, OwnedDeps, Querier, QuerierResult, QueryRequest,
+    SystemError, SystemResult, Validator,
 };
 
 use crate::{SwapQuerier, TreasuryQuerier};
@@ -10,16 +10,14 @@ use terra_cosmwasm::{TerraQueryWrapper, TerraRoute};
 /// mock_dependencies is a drop-in replacement for cosmwasm_std::testing::mock_dependencies
 /// this uses our CustomQuerier.
 pub fn mock_dependencies(
-    canonical_length: usize,
     contract_balance: &[Coin],
-) -> Extern<MockStorage, MockApi, TerraMockQuerier> {
-    let contract_addr = HumanAddr::from(MOCK_CONTRACT_ADDR);
+) -> OwnedDeps<MockStorage, MockApi, TerraMockQuerier> {
     let custom_querier: TerraMockQuerier =
-        TerraMockQuerier::new(MockQuerier::new(&[(&contract_addr, contract_balance)]));
+        TerraMockQuerier::new(MockQuerier::new(&[(MOCK_CONTRACT_ADDR, contract_balance)]));
 
-    Extern {
+    OwnedDeps {
         storage: MockStorage::default(),
-        api: MockApi::new(canonical_length),
+        api: MockApi::default(),
         querier: custom_querier,
     }
 }
@@ -36,7 +34,7 @@ impl Querier for TerraMockQuerier {
         let request: QueryRequest<TerraQueryWrapper> = match from_slice(bin_request) {
             Ok(v) => v,
             Err(e) => {
-                return Err(SystemError::InvalidRequest {
+                return SystemResult::Err(SystemError::InvalidRequest {
                     error: format!("Parsing query request: {}", e),
                     request: bin_request.into(),
                 })
@@ -69,7 +67,7 @@ impl TerraMockQuerier {
     }
 
     // set a new balance for the given address and return the old balance
-    pub fn update_balance<U: Into<HumanAddr>>(
+    pub fn update_balance<U: Into<String>>(
         &mut self,
         addr: U,
         balance: Vec<Coin>,

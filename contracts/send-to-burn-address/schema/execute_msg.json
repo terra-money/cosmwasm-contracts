@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExecuteMsg",
+  "anyOf": [
+    {
+      "description": "Check the current balance is increased as much as expected",
+      "type": "object",
+      "required": [
+        "send_to_burn_account"
+      ],
+      "properties": {
+        "send_to_burn_account": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

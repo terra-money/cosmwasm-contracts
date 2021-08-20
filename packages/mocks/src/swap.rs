@@ -1,4 +1,4 @@
-use cosmwasm_std::{to_binary, Coin, Decimal, QuerierResult, StdError};
+use cosmwasm_std::{to_binary, Coin, Decimal, QuerierResult, SystemError, SystemResult};
 use std::collections::{BTreeMap, HashMap};
 
 use terra_cosmwasm::{SwapResponse, TerraQuery};
@@ -49,10 +49,13 @@ impl SwapQuerier {
                 let amount = match rate {
                     Some(r) => offer_coin.amount * *r,
                     None => {
-                        return Ok(Err(StdError::generic_err(format!(
-                            "No rate listed for {} to {}",
-                            offer_coin.denom, ask_denom,
-                        ))))
+                        return SystemResult::Err(SystemError::InvalidRequest {
+                            error: format!(
+                                "No rate listed for {} to {}",
+                                offer_coin.denom, ask_denom,
+                            ),
+                            request: to_binary(request).unwrap(),
+                        })
                     }
                 };
                 let swap_res = SwapResponse {
@@ -61,7 +64,7 @@ impl SwapQuerier {
                         denom: ask_denom.clone(),
                     },
                 };
-                Ok(to_binary(&swap_res))
+                SystemResult::Ok(to_binary(&swap_res).into())
             }
             _ => panic!("DO NOT ENTER HERE"),
         }
@@ -71,7 +74,7 @@ impl SwapQuerier {
 #[cfg(test)]
 mod test {
     use super::*;
-    use cosmwasm_std::{coin, from_binary, StdError};
+    use cosmwasm_std::{coin, from_binary};
 
     #[test]
     fn forward_swap() {
@@ -119,9 +122,11 @@ mod test {
             offer_coin: coin(100, "ETH"),
             ask_denom: "ATOM".to_string(),
         };
-        let res = querier.query(&forward_query).unwrap();
+        let res = querier.query(&forward_query);
         match res.unwrap_err() {
-            StdError::GenericErr { msg, .. } => assert_eq!(msg, "No rate listed for ETH to ATOM"),
+            SystemError::InvalidRequest { error, .. } => {
+                assert_eq!(error, "No rate listed for ETH to ATOM")
+            }
             _ => panic!("unexpected error"),
         }
     }
