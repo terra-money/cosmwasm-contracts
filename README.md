@@ -11,14 +11,16 @@ The organization is relatively simple. The top-level directory is just a placeho
 and has no real code. And we use workspaces to add multiple contracts below.
 This allows us to compile all contracts with one command.
 
-## Usage:
+## Usage
 
-The following contracts are available for use. You can view the source code under `src`
-and a precompiled wasm ready for deployment under `contract.wasm`. Take a look here:
+Sample contracts are available under the `contracts/` directory. You can view the source code under each contract’s `src` subdirectory. Take a look here:
 
-* [assert_limit_order](./cosmwasm-examples/assert_limit_order) - It is used to assert minimum receive of on-chain swap operation
-* [send_to_burn_address](./cosmwasm-examples/send_to_burn_address) - Has only one interface to transfer all tokens to the burn address
 * [maker](./contracts/maker) - Example implementation to show terra-binding for CosmWasm
+* [assert limit order](./contracts/assert_limit_order)
+* [mask](./contracts/mask)
+* [mintable erc20](./contracts/mintable_erc20)
+* [roll staking](./contracts/roll_staking)
+* [send to burn address](./contracts/send-to-burn-address)
 
 ## Development
 
