@@ -13,7 +13,7 @@ pub fn mock_dependencies(
     contract_balance: &[Coin],
 ) -> OwnedDeps<MockStorage, MockApi, TerraMockQuerier> {
     let custom_querier: TerraMockQuerier =
-        TerraMockQuerier::new(MockQuerier::new(&[(&MOCK_CONTRACT_ADDR, contract_balance)]));
+        TerraMockQuerier::new(MockQuerier::new(&[(MOCK_CONTRACT_ADDR, contract_balance)]));
 
     OwnedDeps {
         storage: MockStorage::default(),

@@ -296,7 +296,7 @@ mod tests {
     use super::*;
 
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{coins, CosmosMsg, Timestamp, WasmMsg, SubMsg};
+    use cosmwasm_std::{coins, CosmosMsg, SubMsg, Timestamp, WasmMsg};
     use cw20::{Cw20Coin, TokenInfoResponse};
 
     use crate::contract::{execute, instantiate, query_balance, query_token_info};
