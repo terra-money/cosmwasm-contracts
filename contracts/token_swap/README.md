@@ -12,7 +12,7 @@ This contract is to provide interface for swapping a legacy token to a target to
 
 * Swap - Transfer cw20 token to this contract using `Cw20ExecuteMsg::Send` with `Cw20HookMsg::Swap` as msg.
 
-```json
+```rust
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Cw20HookMsg {
