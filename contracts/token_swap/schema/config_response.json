@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ConfigResponse",
+  "type": "object",
+  "required": [
+    "legacy_token",
+    "owner",
+    "swap_enabled",
+    "target_token"
+  ],
+  "properties": {
+    "legacy_token": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string"
+    },
+    "swap_enabled": {
+      "type": "boolean"
+    },
+    "target_token": {
+      "type": "string"
+    }
+  }
+}

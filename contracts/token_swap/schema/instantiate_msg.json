@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "type": "object",
+  "required": [
+    "legacy_token",
+    "owner",
+    "target_token"
+  ],
+  "properties": {
+    "legacy_token": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string"
+    },
+    "target_token": {
+      "type": "string"
+    }
+  }
+}
