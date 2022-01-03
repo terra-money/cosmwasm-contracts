@@ -52,7 +52,7 @@ mod test {
 
     #[test]
     fn token_info_legacy_compatibility() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         store_token_info(
             &mut deps.storage,
             &TokenInfo {

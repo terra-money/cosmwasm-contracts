@@ -1,11 +1,14 @@
+#[cfg(not(feature = "library"))]
+use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Response,
     StdResult, Uint128,
 };
 
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use terra_cosmwasm::TerraQuerier;
+use terra_cosmwasm::{TerraQuerier, TerraQueryWrapper};
 
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     _deps: DepsMut,
     _env: Env,
@@ -15,8 +18,9 @@ pub fn instantiate(
     Ok(Response::default())
 }
 
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
-    deps: DepsMut,
+    deps: DepsMut<TerraQueryWrapper>,
     env: Env,
     _info: MessageInfo,
     msg: ExecuteMsg,
@@ -26,7 +30,7 @@ pub fn execute(
     }
 }
 
-fn send_to_burn_account(deps: DepsMut, env: Env) -> StdResult<Response> {
+fn send_to_burn_account(deps: DepsMut<TerraQueryWrapper>, env: Env) -> StdResult<Response> {
     let balances: Vec<Coin> = deps.querier.query_all_balances(&env.contract.address)?;
     let amount = deduct_tax(deps, balances)?;
     Ok(Response::new().add_message(CosmosMsg::Bank(BankMsg::Send {
@@ -36,7 +40,7 @@ fn send_to_burn_account(deps: DepsMut, env: Env) -> StdResult<Response> {
 }
 
 static DECIMAL_FRACTION: u128 = 1_000_000_000_000_000_000u128;
-fn deduct_tax(deps: DepsMut, coins: Vec<Coin>) -> StdResult<Vec<Coin>> {
+fn deduct_tax(deps: DepsMut<TerraQueryWrapper>, coins: Vec<Coin>) -> StdResult<Vec<Coin>> {
     let terra_querier = TerraQuerier::new(&deps.querier);
     let tax_rate: Decimal = (terra_querier.query_tax_rate()?).rate;
 
@@ -51,7 +55,8 @@ fn deduct_tax(deps: DepsMut, coins: Vec<Coin>) -> StdResult<Vec<Coin>> {
                         - std::cmp::min(
                             v.amount.multiply_ratio(
                                 DECIMAL_FRACTION,
-                                (tax_rate * DECIMAL_FRACTION.into()).u128() + DECIMAL_FRACTION,
+                                (tax_rate * Uint128::new(DECIMAL_FRACTION)).u128()
+                                    + DECIMAL_FRACTION,
                             ),
                             tax_cap,
                         )
@@ -63,6 +68,7 @@ fn deduct_tax(deps: DepsMut, coins: Vec<Coin>) -> StdResult<Vec<Coin>> {
         .collect()
 }
 
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
     Ok(Binary::default())
 }

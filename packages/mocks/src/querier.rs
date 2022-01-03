@@ -5,13 +5,14 @@ use cosmwasm_std::{
 };
 
 use crate::{SwapQuerier, TreasuryQuerier};
+use std::marker::PhantomData;
 use terra_cosmwasm::{TerraQueryWrapper, TerraRoute};
 
 /// mock_dependencies is a drop-in replacement for cosmwasm_std::testing::mock_dependencies
 /// this uses our CustomQuerier.
 pub fn mock_dependencies(
     contract_balance: &[Coin],
-) -> OwnedDeps<MockStorage, MockApi, TerraMockQuerier> {
+) -> OwnedDeps<MockStorage, MockApi, TerraMockQuerier, TerraQueryWrapper> {
     let custom_querier: TerraMockQuerier =
         TerraMockQuerier::new(MockQuerier::new(&[(MOCK_CONTRACT_ADDR, contract_balance)]));
 
@@ -19,6 +20,7 @@ pub fn mock_dependencies(
         storage: MockStorage::default(),
         api: MockApi::default(),
         querier: custom_querier,
+        custom_query_type: PhantomData,
     }
 }
 
