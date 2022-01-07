@@ -164,10 +164,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-storage-plus"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a8e401ed71bd64abb9b91151a9ff4f7b34e81b2b3eceab23e3cb67fe47e39938"
+dependencies = [
+ "cosmwasm-std",
+ "schemars",
+ "serde",
+]
+
+[[package]]
 name = "cw0"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "debc623e83cca463fc5f195bb6f23803a7e5e281b330b759381dcc7ef76d4393"
+dependencies = [
+ "cosmwasm-std",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "cw0"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d759bb5418a3bdf091e1f1be17de2a15d95d2be4fee28045c2e461f4c6d9d1ca"
 dependencies = [
  "cosmwasm-std",
  "schemars",
@@ -182,7 +205,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51698a50df8be3d31d7261082f052685d04fe6289df89792fd4efa41daee8b90"
 dependencies = [
  "cosmwasm-std",
- "cw-storage-plus",
+ "cw-storage-plus 0.8.0",
  "schemars",
  "serde",
 ]
@@ -194,7 +217,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f24779556263d95d5a7ebf8a0b0cd615df0b34bff69c23f409e5f17b5fb529ef"
 dependencies = [
  "cosmwasm-std",
- "cw0",
+ "cw0 0.8.0",
+ "schemars",
+ "serde",
+]
+
+[[package]]
+name = "cw20"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ac49b013ca1e355fd988cc1926acc9a16d7fd45cfb595ee330455582a788b100"
+dependencies = [
+ "cosmwasm-std",
+ "cw0 0.9.1",
  "schemars",
  "serde",
 ]
@@ -206,10 +241,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc6cac998c7ac2b907fe2ccf1b5b966f5ea823b4aa6c2985770223547b7b77ec"
 dependencies = [
  "cosmwasm-std",
- "cw-storage-plus",
- "cw0",
+ "cw-storage-plus 0.8.0",
+ "cw0 0.8.0",
  "cw2",
- "cw20",
+ "cw20 0.8.0",
  "schemars",
  "serde",
  "thiserror",
@@ -222,10 +257,10 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-storage-plus",
- "cw0",
+ "cw-storage-plus 0.8.0",
+ "cw0 0.8.0",
  "cw2",
- "cw20",
+ "cw20 0.8.0",
  "cw20-base",
  "schemars",
  "serde",
@@ -679,8 +714,20 @@ version = "0.0.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-storage-plus",
- "cw20",
+ "cw-storage-plus 0.8.0",
+ "cw20 0.8.0",
+ "schemars",
+ "serde",
+]
+
+[[package]]
+name = "token-vesting"
+version = "0.0.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus 0.9.1",
+ "cw20 0.9.1",
  "schemars",
  "serde",
 ]
