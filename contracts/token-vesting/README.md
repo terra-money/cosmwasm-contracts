@@ -55,3 +55,9 @@ pub enum ExecuteMsg {
     },
 }
 ```
+
+### Deployed Contract Info
+| data          | bombay-12                                    | columbus-5 |
+| ------------- | -------------------------------------------- | ---------- |
+| code_id       | 31686                                        | N/A        |
+| contract_addr | terra1w7qkgw89lz72qqxhrqw3rh4vnddl583tfwu3cx | N/A        |
