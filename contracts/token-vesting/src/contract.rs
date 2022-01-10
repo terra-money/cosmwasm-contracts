@@ -333,11 +333,15 @@ fn claim(
 
         let claimable_amount = vested_amount.checked_sub(claimed_amount)?;
         if claimable_amount.is_zero() {
-            return Err(StdError::generic_err("no claimable amount left"));
+            continue;
         }
 
         account.claimed_amount = vested_amount;
-        VESTING_ACCOUNTS.save(deps.storage, (sender.as_str(), &denom_key), &account)?;
+        if account.claimed_amount == account.vesting_amount {
+            VESTING_ACCOUNTS.remove(deps.storage, (sender.as_str(), &denom_key));
+        } else {
+            VESTING_ACCOUNTS.save(deps.storage, (sender.as_str(), &denom_key), &account)?;
+        }
 
         let message: CosmosMsg = match account.vesting_denom.clone() {
             Denom::Native(denom) => BankMsg::Send {

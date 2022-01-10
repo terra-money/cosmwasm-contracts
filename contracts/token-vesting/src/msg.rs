@@ -134,3 +134,50 @@ impl VestingSchedule {
         }
     }
 }
+
+#[test]
+fn linear_vesting_vested_amount() {
+    let schedule = VestingSchedule::LinearVesting {
+        start_time: "100".to_string(),
+        end_time: "110".to_string(),
+        total_amount: Uint128::new(1000000u128),
+    };
+
+    assert_eq!(schedule.vested_amount(100).unwrap(), Uint128::zero());
+    assert_eq!(
+        schedule.vested_amount(105).unwrap(),
+        Uint128::new(500000u128)
+    );
+    assert_eq!(
+        schedule.vested_amount(110).unwrap(),
+        Uint128::new(1000000u128)
+    );
+    assert_eq!(
+        schedule.vested_amount(115).unwrap(),
+        Uint128::new(1000000u128)
+    );
+}
+
+#[test]
+fn periodic_vesting_vested_amount() {
+    let schedule = VestingSchedule::PeriodicVesting {
+        start_time: "100".to_string(),
+        end_time: "110".to_string(),
+        vesting_interval: "1".to_string(),
+        amount: Uint128::new(100000u128),
+    };
+
+    assert_eq!(schedule.vested_amount(100).unwrap(), Uint128::zero());
+    assert_eq!(
+        schedule.vested_amount(105).unwrap(),
+        Uint128::new(500000u128)
+    );
+    assert_eq!(
+        schedule.vested_amount(110).unwrap(),
+        Uint128::new(1000000u128)
+    );
+    assert_eq!(
+        schedule.vested_amount(115).unwrap(),
+        Uint128::new(1000000u128)
+    );
+}
