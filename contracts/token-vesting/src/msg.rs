@@ -22,6 +22,7 @@ pub enum ExecuteMsg {
     /// only available when master_address was set
     DeregisterVestingAccount {
         address: String,
+        denom: Denom,
         vested_token_recipient: Option<String>,
         left_vesting_token_recipient: Option<String>,
     },
@@ -30,6 +31,7 @@ pub enum ExecuteMsg {
     /// VestingAccount Operations ///
     ////////////////////////
     Claim {
+        denoms: Vec<Denom>,
         recipient: Option<String>,
     },
 }
@@ -48,13 +50,22 @@ pub enum Cw20HookMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    VestingAccount { address: String },
+    VestingAccount {
+        address: String,
+        start_after: Option<Denom>,
+        limit: Option<u32>,
+    },
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, PartialEq, Debug)]
 pub struct VestingAccountResponse {
-    pub master_address: Option<String>,
     pub address: String,
+    pub vestings: Vec<VestingData>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, PartialEq, Debug)]
+pub struct VestingData {
+    pub master_address: Option<String>,
     pub vesting_denom: Denom,
     pub vesting_amount: Uint128,
     pub vested_amount: Uint128,
