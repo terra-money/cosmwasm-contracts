@@ -51,7 +51,7 @@ fn register_vesting_account_with_native_token() {
 
     // invalid zero amount
     let info = mock_info("addr0000", &[Coin::new(0u128, "uusd")]);
-    let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
+    let res = execute(deps.as_mut(), env.clone(), info, msg);
     match res.unwrap_err() {
         StdError::GenericErr { msg, .. } => {
             assert_eq!(msg, "cannot make zero token vesting account")
@@ -99,7 +99,7 @@ fn register_vesting_account_with_native_token() {
 
     // valid amount
     let info = mock_info("addr0000", &[Coin::new(1000000u128, "uusd")]);
-    let res: Response = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap();
+    let res: Response = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
     assert_eq!(
         res.attributes,
         vec![
@@ -175,7 +175,7 @@ fn register_vesting_account_with_cw20_token() {
     });
 
     // invalid zero amount
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
     match res.unwrap_err() {
         StdError::GenericErr { msg, .. } => {
             assert_eq!(msg, "cannot make zero token vesting account")
@@ -200,7 +200,7 @@ fn register_vesting_account_with_cw20_token() {
     });
 
     // invalid amount
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
     match res.unwrap_err() {
         StdError::GenericErr { msg, .. } => assert_eq!(msg, "invalid total_amount"),
         _ => panic!("should not enter"),
@@ -223,7 +223,7 @@ fn register_vesting_account_with_cw20_token() {
     });
 
     // valid amount
-    let res: Response = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap();
+    let res: Response = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
     assert_eq!(
         res.attributes,
         vec![
@@ -295,7 +295,7 @@ fn claim_native() {
     };
 
     let info = mock_info("addr0000", &[Coin::new(1000000u128, "uusd")]);
-    let _ = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap();
+    let _ = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     // make time to half claimable
     env.block.time = Timestamp::from_seconds(105);
@@ -383,7 +383,7 @@ fn claim_native() {
     // make time to half claimable
     env.block.time = Timestamp::from_seconds(110);
 
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+    let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
     assert_eq!(
         res.messages,
         vec![SubMsg::new(BankMsg::Send {
@@ -461,7 +461,7 @@ fn claim_cw20() {
 
     // valid amount
     let info = mock_info("token0001", &[]);
-    let _ = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap();
+    let _ = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     // make time to half claimable
     env.block.time = Timestamp::from_seconds(105);
