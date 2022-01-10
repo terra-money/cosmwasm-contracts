@@ -22,6 +22,7 @@ pub enum ExecuteMsg {
     /// only available when master_address was set
     DeregisterVestingAccount {
         address: String,
+        denom: Denom,
         vested_token_recipient: Option<String>,
         left_vesting_token_recipient: Option<String>,
     },
@@ -51,6 +52,7 @@ pub enum ExecuteMsg {
     /// VestingAccount Operations ///
     ////////////////////////
     Claim {
+        denoms: Vec<Denom>,
         recipient: Option<String>,
     },
 }
