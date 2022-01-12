@@ -433,6 +433,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9385f66bf6105b241aa65a61cb923ef20efc665cb9f9bb50ac2f0c4b7f378d41"
 
 [[package]]
+name = "luna-bluna-vesting"
+version = "0.0.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus 0.9.1",
+ "cw20 0.9.1",
+ "schemars",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "maker"
 version = "0.0.0"
 dependencies = [

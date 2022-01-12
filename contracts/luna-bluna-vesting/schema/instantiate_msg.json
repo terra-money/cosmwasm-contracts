@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "type": "object",
+  "required": [
+    "enable_staking",
+    "owner_address",
+    "vesting_schedule"
+  ],
+  "properties": {
+    "enable_staking": {
+      "type": "boolean"
+    },
+    "owner_address": {
+      "type": "string"
+    },
+    "staking_info": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/StakingInfo"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "vesting_schedule": {
+      "$ref": "#/definitions/VestingSchedule"
+    }
+  },
+  "definitions": {
+    "Decimal": {
+      "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+      "type": "string"
+    },
+    "StakingInfo": {
+      "type": "object",
+      "required": [
+        "bluna_token",
+        "hub_contract",
+        "reward_contract",
+        "validator"
+      ],
+      "properties": {
+        "bluna_token": {
+          "type": "string"
+        },
+        "hub_contract": {
+          "type": "string"
+        },
+        "reward_contract": {
+          "type": "string"
+        },
+        "validator": {
+          "type": "string"
+        }
+      }
+    },
+    "VestingSchedule": {
+      "description": "VestingSchedule is used to vest tokens at regular intervals for a specific period. To minimize calculation error, (end_time - start_time) should be multiple of vesting_interval",
+      "type": "object",
+      "required": [
+        "end_time",
+        "start_time",
+        "vesting_interval",
+        "vesting_ratio"
+      ],
+      "properties": {
+        "end_time": {
+          "type": "string"
+        },
+        "start_time": {
+          "type": "string"
+        },
+        "vesting_interval": {
+          "type": "string"
+        },
+        "vesting_ratio": {
+          "$ref": "#/definitions/Decimal"
+        }
+      }
+    }
+  }
+}
