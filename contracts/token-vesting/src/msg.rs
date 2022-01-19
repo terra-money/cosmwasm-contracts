@@ -105,6 +105,10 @@ impl VestingSchedule {
             } => {
                 let start_time = start_time.parse::<u64>().unwrap();
                 let end_time = end_time.parse::<u64>().unwrap();
+                if block_time <= start_time {
+                    return Ok(Uint128::zero());
+                }
+
                 if block_time >= end_time {
                     return Ok(*total_amount);
                 }
@@ -124,6 +128,11 @@ impl VestingSchedule {
                 let end_time = end_time.parse::<u64>().unwrap();
                 let vesting_interval = vesting_interval.parse::<u64>().unwrap();
                 let num_interval = (end_time - start_time) / vesting_interval;
+
+                if block_time <= start_time {
+                    return Ok(Uint128::zero());
+                }
+
                 if block_time >= end_time {
                     return Ok(amount.checked_mul(Uint128::from(num_interval))?);
                 }

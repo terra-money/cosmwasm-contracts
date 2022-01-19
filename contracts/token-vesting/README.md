@@ -61,5 +61,5 @@ pub enum ExecuteMsg {
 ### Deployed Contract Info
 | data          | bombay-12                                    | columbus-5 |
 | ------------- | -------------------------------------------- | ---------- |
-| code_id       | 32684                                        | N/A        |
-| contract_addr | terra1a36wjt05qsd0kgtxpsgrncg96ap3263a7kptfh | N/A        |
+| code_id       | 35329                                        | N/A        |
+| contract_addr | terra16heeu9z9xya0x8kkfme9zpaeh4patd0057wpm7 | N/A        |
