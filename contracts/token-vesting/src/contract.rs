@@ -90,12 +90,10 @@ fn register_vesting_account(
         VestingSchedule::LinearVesting {
             start_time,
             end_time,
-            total_amount,
+            vesting_amount,
         } => {
-            if total_amount.is_zero() {
-                return Err(StdError::generic_err(
-                    "cannot make zero token vesting account",
-                ));
+            if vesting_amount.is_zero() {
+                return Err(StdError::generic_err("assert(vesting_amount > 0)"));
             }
 
             let start_time = start_time
@@ -107,17 +105,17 @@ fn register_vesting_account(
                 .map_err(|_| StdError::generic_err("invalid end_time"))?;
 
             if start_time < env.block.time.seconds() {
-                return Err(StdError::generic_err("invalid start_time"));
+                return Err(StdError::generic_err("assert(start_time < block_time)"));
             }
 
             if end_time <= start_time {
-                return Err(StdError::generic_err(
-                    "end_time must be bigger than start_time",
-                ));
+                return Err(StdError::generic_err("assert(end_time <= start_time)"));
             }
 
-            if total_amount != deposit_amount {
-                return Err(StdError::generic_err("invalid total_amount"));
+            if vesting_amount != deposit_amount {
+                return Err(StdError::generic_err(
+                    "assert(deposit_amount == vesting_amount)",
+                ));
             }
         }
         VestingSchedule::PeriodicVesting {
@@ -149,26 +147,25 @@ fn register_vesting_account(
             }
 
             if end_time <= start_time {
-                return Err(StdError::generic_err(
-                    "end_time must be bigger than start_time",
-                ));
+                return Err(StdError::generic_err("assert(end_time > start_time)"));
             }
 
             if vesting_interval == 0 {
-                return Err(StdError::generic_err("vesting_interval must be non-zero"));
+                return Err(StdError::generic_err("assert(vesting_interval != 0)"));
             }
 
             let time_period = end_time - start_time;
-            let num_interval = time_period / vesting_interval;
-            if time_period != num_interval * vesting_interval {
+            if time_period != (time_period / vesting_interval) * vesting_interval {
                 return Err(StdError::generic_err(
-                    "(end_time - start_time) must be multiple of vesting_interval",
+                    "assert((end_time - start_time) % vesting_interval == 0)",
                 ));
             }
 
-            if amount.checked_mul(Uint128::from(num_interval))? != deposit_amount {
+            let num_interval = 1 + time_period / vesting_interval;
+            let vesting_amount = amount.checked_mul(Uint128::from(num_interval))?;
+            if vesting_amount != deposit_amount {
                 return Err(StdError::generic_err(
-                    "deposit_amount must be equal with amount * num_interval",
+                    "assert(deposit_amount = amount * ((end_time - start_time) / vesting_interval + 1))",
                 ));
             }
         }

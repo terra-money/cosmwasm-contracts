@@ -53,7 +53,7 @@
               "required": [
                 "end_time",
                 "start_time",
-                "total_amount"
+                "vesting_amount"
               ],
               "properties": {
                 "end_time": {
@@ -62,7 +62,7 @@
                 "start_time": {
                   "type": "string"
                 },
-                "total_amount": {
+                "vesting_amount": {
                   "$ref": "#/definitions/Uint128"
                 }
               }
@@ -71,7 +71,7 @@
           "additionalProperties": false
         },
         {
-          "description": "PeriodicVesting is used to vest tokens at regular intervals for a specific period. To minimize calculation error, (end_time - start_time) should be multiple of vesting_interval",
+          "description": "PeriodicVesting is used to vest tokens at regular intervals for a specific period. To minimize calculation error, (end_time - start_time) should be multiple of vesting_interval deposit_amount = amount * ((end_time - start_time) / vesting_interval + 1)",
           "type": "object",
           "required": [
             "periodic_vesting"

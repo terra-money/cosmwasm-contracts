@@ -45,7 +45,7 @@ fn register_vesting_account_with_native_token() {
         vesting_schedule: VestingSchedule::LinearVesting {
             start_time: "100".to_string(),
             end_time: "110".to_string(),
-            total_amount: Uint128::zero(),
+            vesting_amount: Uint128::zero(),
         },
     };
 
@@ -54,7 +54,7 @@ fn register_vesting_account_with_native_token() {
     let res = execute(deps.as_mut(), env.clone(), info, msg);
     match res.unwrap_err() {
         StdError::GenericErr { msg, .. } => {
-            assert_eq!(msg, "cannot make zero token vesting account")
+            assert_eq!(msg, "assert(vesting_amount > 0)")
         }
         _ => panic!("should not enter"),
     }
@@ -66,7 +66,7 @@ fn register_vesting_account_with_native_token() {
         vesting_schedule: VestingSchedule::LinearVesting {
             start_time: "100".to_string(),
             end_time: "110".to_string(),
-            total_amount: Uint128::new(1000000u128),
+            vesting_amount: Uint128::new(1000000u128),
         },
     };
 
@@ -93,7 +93,9 @@ fn register_vesting_account_with_native_token() {
     let info = mock_info("addr0000", &[Coin::new(10u128, "uusd")]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     match res.unwrap_err() {
-        StdError::GenericErr { msg, .. } => assert_eq!(msg, "invalid total_amount"),
+        StdError::GenericErr { msg, .. } => {
+            assert_eq!(msg, "assert(deposit_amount == vesting_amount)")
+        }
         _ => panic!("should not enter"),
     }
 
@@ -136,7 +138,7 @@ fn register_vesting_account_with_native_token() {
                 vesting_schedule: VestingSchedule::LinearVesting {
                     start_time: "100".to_string(),
                     end_time: "110".to_string(),
-                    total_amount: Uint128::new(1000000u128),
+                    vesting_amount: Uint128::new(1000000u128),
                 },
                 claimable_amount: Uint128::zero(),
             }],
@@ -168,7 +170,7 @@ fn register_vesting_account_with_cw20_token() {
             vesting_schedule: VestingSchedule::LinearVesting {
                 start_time: "100".to_string(),
                 end_time: "110".to_string(),
-                total_amount: Uint128::zero(),
+                vesting_amount: Uint128::zero(),
             },
         })
         .unwrap(),
@@ -178,7 +180,7 @@ fn register_vesting_account_with_cw20_token() {
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
     match res.unwrap_err() {
         StdError::GenericErr { msg, .. } => {
-            assert_eq!(msg, "cannot make zero token vesting account")
+            assert_eq!(msg, "assert(vesting_amount > 0)")
         }
         _ => panic!("should not enter"),
     }
@@ -193,7 +195,7 @@ fn register_vesting_account_with_cw20_token() {
             vesting_schedule: VestingSchedule::LinearVesting {
                 start_time: "100".to_string(),
                 end_time: "110".to_string(),
-                total_amount: Uint128::new(999000u128),
+                vesting_amount: Uint128::new(999000u128),
             },
         })
         .unwrap(),
@@ -202,7 +204,9 @@ fn register_vesting_account_with_cw20_token() {
     // invalid amount
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
     match res.unwrap_err() {
-        StdError::GenericErr { msg, .. } => assert_eq!(msg, "invalid total_amount"),
+        StdError::GenericErr { msg, .. } => {
+            assert_eq!(msg, "assert(deposit_amount == vesting_amount)")
+        }
         _ => panic!("should not enter"),
     }
 
@@ -216,7 +220,7 @@ fn register_vesting_account_with_cw20_token() {
             vesting_schedule: VestingSchedule::LinearVesting {
                 start_time: "100".to_string(),
                 end_time: "110".to_string(),
-                total_amount: Uint128::new(1000000u128),
+                vesting_amount: Uint128::new(1000000u128),
             },
         })
         .unwrap(),
@@ -260,7 +264,7 @@ fn register_vesting_account_with_cw20_token() {
                 vesting_schedule: VestingSchedule::LinearVesting {
                     start_time: "100".to_string(),
                     end_time: "110".to_string(),
-                    total_amount: Uint128::new(1000000u128),
+                    vesting_amount: Uint128::new(1000000u128),
                 },
                 claimable_amount: Uint128::zero(),
             }],
@@ -290,7 +294,7 @@ fn claim_native() {
         vesting_schedule: VestingSchedule::LinearVesting {
             start_time: "100".to_string(),
             end_time: "110".to_string(),
-            total_amount: Uint128::new(1000000u128),
+            vesting_amount: Uint128::new(1000000u128),
         },
     };
 
@@ -373,7 +377,7 @@ fn claim_native() {
                 vesting_schedule: VestingSchedule::LinearVesting {
                     start_time: "100".to_string(),
                     end_time: "110".to_string(),
-                    total_amount: Uint128::new(1000000u128),
+                    vesting_amount: Uint128::new(1000000u128),
                 },
                 claimable_amount: Uint128::zero(),
             }],
@@ -453,7 +457,7 @@ fn claim_cw20() {
             vesting_schedule: VestingSchedule::LinearVesting {
                 start_time: "100".to_string(),
                 end_time: "110".to_string(),
-                total_amount: Uint128::new(1000000u128),
+                vesting_amount: Uint128::new(1000000u128),
             },
         })
         .unwrap(),
@@ -541,7 +545,7 @@ fn claim_cw20() {
                 vesting_schedule: VestingSchedule::LinearVesting {
                     start_time: "100".to_string(),
                     end_time: "110".to_string(),
-                    total_amount: Uint128::new(1000000u128),
+                    vesting_amount: Uint128::new(1000000u128),
                 },
                 claimable_amount: Uint128::zero(),
             }],
@@ -620,7 +624,7 @@ fn query_vesting_account() {
         vesting_schedule: VestingSchedule::LinearVesting {
             start_time: "100".to_string(),
             end_time: "110".to_string(),
-            total_amount: Uint128::new(1000000u128),
+            vesting_amount: Uint128::new(1000000u128),
         },
     };
 
@@ -636,7 +640,7 @@ fn query_vesting_account() {
             vesting_schedule: VestingSchedule::LinearVesting {
                 start_time: "100".to_string(),
                 end_time: "110".to_string(),
-                total_amount: Uint128::new(1000000u128),
+                vesting_amount: Uint128::new(1000000u128),
             },
         })
         .unwrap(),
@@ -675,7 +679,7 @@ fn query_vesting_account() {
                     vesting_schedule: VestingSchedule::LinearVesting {
                         start_time: "100".to_string(),
                         end_time: "110".to_string(),
-                        total_amount: Uint128::new(1000000u128),
+                        vesting_amount: Uint128::new(1000000u128),
                     },
                     claimable_amount: Uint128::new(500000),
                 },
@@ -687,7 +691,7 @@ fn query_vesting_account() {
                     vesting_schedule: VestingSchedule::LinearVesting {
                         start_time: "100".to_string(),
                         end_time: "110".to_string(),
-                        total_amount: Uint128::new(1000000u128),
+                        vesting_amount: Uint128::new(1000000u128),
                     },
                     claimable_amount: Uint128::new(500000),
                 }
@@ -720,7 +724,7 @@ fn query_vesting_account() {
                 vesting_schedule: VestingSchedule::LinearVesting {
                     start_time: "100".to_string(),
                     end_time: "110".to_string(),
-                    total_amount: Uint128::new(1000000u128),
+                    vesting_amount: Uint128::new(1000000u128),
                 },
                 claimable_amount: Uint128::new(500000),
             },],
@@ -752,7 +756,7 @@ fn query_vesting_account() {
                 vesting_schedule: VestingSchedule::LinearVesting {
                     start_time: "100".to_string(),
                     end_time: "110".to_string(),
-                    total_amount: Uint128::new(1000000u128),
+                    vesting_amount: Uint128::new(1000000u128),
                 },
                 claimable_amount: Uint128::new(500000),
             }],
