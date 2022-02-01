@@ -270,7 +270,7 @@ fn deregister_vesting_account(
                 to_address: recipient,
                 amount: vec![Coin {
                     denom,
-                    amount: claimable_amount,
+                    amount: left_vesting_amount,
                 }],
             }
             .into(),
@@ -278,7 +278,7 @@ fn deregister_vesting_account(
                 contract_addr: contract_addr.to_string(),
                 msg: to_binary(&Cw20ExecuteMsg::Transfer {
                     recipient,
-                    amount: claimable_amount,
+                    amount: left_vesting_amount,
                 })?,
                 funds: vec![],
             }
